@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime
 
 st.set_page_config(layout="wide")
 
@@ -29,6 +30,23 @@ df['Placar'] = df['Placar'].replace("-", "🔮")
 df['Probabilidade (%)'] = (df['Probabilidade'] * 100).round(2)
 
 # =========================
+# NOVA COLUNA RESULTADO
+# =========================
+
+def resultado_flag(placar):
+    if placar == "🔮":
+        return "🔮"
+    try:
+        gols = int(placar.split('x')[0].strip())
+        return "🟢 V" if gols > 0 else "🔴 X"
+    except:
+        return ""
+
+df['Resultado'] = df['Placar'].apply(resultado_flag)
+
+hoje = datetime.today().date()
+
+# =========================
 # ABAS
 # =========================
 
@@ -46,6 +64,7 @@ with tab1:
         st.session_state.max_prob = 100
     if "slider_range" not in st.session_state:
         st.session_state.slider_range = (0, 100)
+
     if "busca_casa" not in st.session_state:
         st.session_state.busca_casa = ""
     if "busca_visit" not in st.session_state:
@@ -145,21 +164,42 @@ with tab1:
 
     # MÉTRICAS
     df_passado = df_filtrado[df_filtrado['Placar'] != "🔮"]
-    df_erros = df_passado[df_passado['Placar'] == "0 x 1"]
+    df_0x1 = df_passado[df_passado['Placar'] == "0 x 1"]
 
     total = len(df_passado)
-    erros = len(df_erros)
-    acertos = total - erros
-    taxa = (acertos / total * 100) if total > 0 else 0
+    erros_0x1 = len(df_0x1)
+    taxa_0x1 = (erros_0x1 / total * 100) if total > 0 else 0
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Jogos", total)
-    c2.metric("Acertos", acertos)
-    c3.metric("Erros (0x1)", erros)
-    c4.metric("Taxa", f"{taxa:.2f}%")
+    st.markdown("### 📊 Resultado do filtro atual")
 
-    colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar','Probabilidade (%)']
-    st.dataframe(df_filtrado[colunas], use_container_width=True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Jogos no filtro", total)
+    col2.metric("0x1", erros_0x1)
+    col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
+
+    # TABELA PRINCIPAL
+    colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar','Resultado','Probabilidade (%)']
+
+    st.dataframe(
+        df_filtrado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
+        use_container_width=True
+    )
+
+    # JOGOS DE HOJE
+    df_hoje = df[
+        (df['Data'].dt.date == hoje) &
+        (df['Placar'] == "🔮")
+    ]
+
+    st.subheader("📅 Jogos de Hoje")
+
+    if len(df_hoje) > 0:
+        st.dataframe(
+            df_hoje[colunas].sort_values(by='Probabilidade (%)', ascending=False),
+            use_container_width=True
+        )
+    else:
+        st.info("Nenhum jogo para hoje 👍")
 
 # =========================
 # ABA 2 (LIGAS)
@@ -191,16 +231,14 @@ with tab2:
 
     df_detalhe = df[df['Liga'] == liga_selecionada]
 
-    colunas = ['Data_str','Time Casa','Time Visitante','Placar']
+    colunas = ['Data_str','Time Casa','Time Visitante','Placar','Resultado']
 
-    # TODOS OS JOGOS
     st.subheader(f"📊 Todos os jogos da liga: {liga_selecionada}")
     st.dataframe(
         df_detalhe[colunas].sort_values(by='Data_str', ascending=False),
         use_container_width=True
     )
 
-    # APENAS 0x1
     df_0x1 = df_detalhe[df_detalhe['Placar'] == "0 x 1"]
 
     st.subheader("❌ Jogos que terminaram 0 x 1")
