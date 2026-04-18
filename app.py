@@ -30,7 +30,7 @@ df['Placar'] = df['Placar'].replace("-", "🔮")
 df['Probabilidade (%)'] = (df['Probabilidade'] * 100).round(2)
 
 # =========================
-# NOVA COLUNA RESULTADO
+# RESULTADO VISUAL
 # =========================
 
 def resultado_flag(placar):
@@ -185,21 +185,34 @@ with tab1:
         use_container_width=True
     )
 
-    # JOGOS DE HOJE
-    df_hoje = df[
-        (df['Data'].dt.date == hoje) &
-        (df['Placar'] == "🔮")
-    ]
+    # =========================
+    # JOGOS DE HOJE (SEPARADOS)
+    # =========================
+
+    df_hoje = df[df['Data'].dt.date == hoje]
+
+    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
+    df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
 
     st.subheader("📅 Jogos de Hoje")
 
-    if len(df_hoje) > 0:
+    st.markdown("#### 🔮 Jogos de Hoje (Futuros)")
+    if len(df_hoje_futuro) > 0:
         st.dataframe(
-            df_hoje[colunas].sort_values(by='Probabilidade (%)', ascending=False),
+            df_hoje_futuro[colunas].sort_values(by='Probabilidade (%)', ascending=False),
             use_container_width=True
         )
     else:
-        st.info("Nenhum jogo para hoje 👍")
+        st.info("Nenhum jogo futuro hoje")
+
+    st.markdown("#### ✅ Jogos de Hoje (Finalizados)")
+    if len(df_hoje_finalizado) > 0:
+        st.dataframe(
+            df_hoje_finalizado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
+            use_container_width=True
+        )
+    else:
+        st.info("Nenhum jogo finalizado hoje")
 
 # =========================
 # ABA 2 (LIGAS)
