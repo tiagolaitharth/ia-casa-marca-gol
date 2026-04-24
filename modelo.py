@@ -32,7 +32,19 @@ def rodar_modelo():
     for c in colunas_base:
         df[c] = df[c].apply(limpar)
 
-    # TARGET
+    # =========================
+    # SEPARAÇÃO CORRETA
+    # =========================
+
+    df['Placar'] = df['Placar'].astype(str).str.strip()
+
+    df_treino = df[df['Placar'] != "-"].copy()
+    df_prever = df[df['Placar'] == "-"].copy()
+
+    # =========================
+    # TARGET (SÓ TREINO)
+    # =========================
+
     def extrair_alvo(placar):
         try:
             gols = int(str(placar).split('x')[0].strip())
@@ -40,14 +52,22 @@ def rodar_modelo():
         except:
             return 0
 
-    df['ALVO'] = df['Placar'].apply(extrair_alvo)
+    df_treino['ALVO'] = df_treino['Placar'].apply(extrair_alvo)
 
-    # FEATURES
-    df['FORCA_ATAQUE_CASA'] = df['MÉDIA GOL A FAVOR CASA'] * df['% Marca Gol Casa']
-    df['FRAGILIDADE_DEFESA_FORA'] = df['MÉDIA GOLS CONTRA FORA']
-    df['INDICE_GOL_CASA'] = df['FORCA_ATAQUE_CASA'] - df['FRAGILIDADE_DEFESA_FORA']
-    df['JOGO_TRAVADO'] = df['MÉDIA GOLS TOTAL CASA'] + df['MÉDIA GOLS TOTAL FORA']
-    df['PRESSAO_VISITANTE'] = 1 / df['ODD FORA']
+    # =========================
+    # FEATURES (AMBOS)
+    # =========================
+
+    def criar_features(df_):
+        df_['FORCA_ATAQUE_CASA'] = df_['MÉDIA GOL A FAVOR CASA'] * df_['% Marca Gol Casa']
+        df_['FRAGILIDADE_DEFESA_FORA'] = df_['MÉDIA GOLS CONTRA FORA']
+        df_['INDICE_GOL_CASA'] = df_['FORCA_ATAQUE_CASA'] - df_['FRAGILIDADE_DEFESA_FORA']
+        df_['JOGO_TRAVADO'] = df_['MÉDIA GOLS TOTAL CASA'] + df_['MÉDIA GOLS TOTAL FORA']
+        df_['PRESSAO_VISITANTE'] = 1 / df_['ODD FORA']
+        return df_
+
+    df_treino = criar_features(df_treino)
+    df_prever = criar_features(df_prever)
 
     colunas = colunas_base + [
         'FORCA_ATAQUE_CASA',
@@ -57,8 +77,12 @@ def rodar_modelo():
         'PRESSAO_VISITANTE'
     ]
 
-    X = df[colunas].fillna(0)
-    y = df['ALVO']
+    # =========================
+    # TREINO
+    # =========================
+
+    X = df_treino[colunas].fillna(0)
+    y = df_treino['ALVO']
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -73,11 +97,26 @@ def rodar_modelo():
 
     modelo.fit(X_scaled, y)
 
-    # RESULTADO
-    df_resultado = df.copy()
-    df_resultado['Probabilidade'] = modelo.predict_proba(X_scaled)[:, 1]
+    # =========================
+    # PREVISÃO (SÓ FUTURO)
+    # =========================
 
-    # 🔥 AGORA INCLUI LIGA
+    if len(df_prever) > 0:
+        X_prever = df_prever[colunas].fillna(0)
+        X_prever_scaled = scaler.transform(X_prever)
+
+        df_prever['Probabilidade'] = modelo.predict_proba(X_prever_scaled)[:, 1]
+    else:
+        df_prever['Probabilidade'] = []
+
+    # =========================
+    # JUNTA RESULTADO FINAL
+    # =========================
+
+    df_treino['Probabilidade'] = None
+
+    df_resultado = pd.concat([df_treino, df_prever])
+
     df_resultado = df_resultado[[
         'Liga',
         'Data',
