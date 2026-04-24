@@ -18,10 +18,15 @@ if not os.path.exists("resultado_modelo.xlsx"):
 df = pd.read_excel("resultado_modelo.xlsx")
 
 # =========================
+# 🔥 CORREÇÃO DEFINITIVA DE DATA
+# =========================
+
+df['Data'] = pd.to_datetime(df['Data'], format='%d/%m/%Y', errors='coerce')
+
+# =========================
 # TRATAMENTO
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'])
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
@@ -92,7 +97,6 @@ with tab1:
         st.session_state.busca_visit = ""
         st.session_state.busca_data = ""
 
-    # SIDEBAR
     st.sidebar.header("Filtros")
 
     st.sidebar.slider(
@@ -122,7 +126,6 @@ with tab1:
     placares = sorted(df['Placar'].dropna().unique())
     placar_sidebar = st.sidebar.multiselect("Placar", options=placares)
 
-    # FILTRO BASE
     df_filtrado = df[
         (df['Probabilidade'] >= threshold_min / 100) &
         (df['Probabilidade'] <= threshold_max / 100)
@@ -140,7 +143,6 @@ with tab1:
     if placar_sidebar:
         df_filtrado = df_filtrado[df_filtrado['Placar'].isin(placar_sidebar)]
 
-    # FILTROS TABELA
     st.subheader("🔎 Filtros da tabela")
 
     c1, c2, c3, c4 = st.columns([1,1,1,1])
@@ -151,18 +153,17 @@ with tab1:
 
     c4.button("🔄 Limpar", on_click=limpar_filtros)
 
-    def aplicar(df):
+    def aplicar(df_):
         if st.session_state.busca_casa:
-            df = df[df['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
+            df_ = df_[df_['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
         if st.session_state.busca_visit:
-            df = df[df['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
+            df_ = df_[df_['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
         if st.session_state.busca_data:
-            df = df[df['Data_str'].str.contains(st.session_state.busca_data)]
-        return df
+            df_ = df_[df_['Data_str'].str.contains(st.session_state.busca_data)]
+        return df_
 
     df_filtrado = aplicar(df_filtrado)
 
-    # MÉTRICAS
     df_passado = df_filtrado[df_filtrado['Placar'] != "🔮"]
     df_0x1 = df_passado[df_passado['Placar'] == "0 x 1"]
 
@@ -177,7 +178,6 @@ with tab1:
     col2.metric("0x1", erros_0x1)
     col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
 
-    # TABELA PRINCIPAL
     colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar','Resultado','Probabilidade (%)']
 
     st.dataframe(
@@ -186,7 +186,7 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE (SÓ FUTUROS)
+    # JOGOS DE HOJE
     # =========================
 
     df_hoje = df[df['Data'].dt.date == hoje]
@@ -195,61 +195,10 @@ with tab1:
 
     st.subheader("📅 Jogos de Hoje")
 
-    st.markdown("#### 🔮 Jogos de Hoje (Futuros)")
     if len(df_hoje_futuro) > 0:
         st.dataframe(
             df_hoje_futuro[colunas].sort_values(by='Probabilidade (%)', ascending=False),
             use_container_width=True
         )
     else:
-        st.info("Nenhum jogo futuro hoje")
-
-# =========================
-# ABA 2 (LIGAS)
-# =========================
-
-with tab2:
-
-    st.subheader("🏆 Análise por Ligas")
-
-    df_ligas = df[df['Placar'] != "🔮"].copy()
-
-    resumo = df_ligas.groupby('Liga').agg(
-        Jogos=('Liga', 'count'),
-        Erros_0x1=('Placar', lambda x: (x == "0 x 1").sum())
-    ).reset_index()
-
-    resumo['Taxa_0x1 (%)'] = (
-        resumo['Erros_0x1'] / resumo['Jogos'] * 100
-    ).round(2)
-
-    resumo = resumo.sort_values(by='Jogos', ascending=False)
-
-    st.dataframe(resumo, use_container_width=True)
-
-    liga_selecionada = st.selectbox(
-        "Selecionar Liga",
-        options=resumo['Liga']
-    )
-
-    df_detalhe = df[df['Liga'] == liga_selecionada]
-
-    colunas = ['Data_str','Time Casa','Time Visitante','Placar','Resultado']
-
-    st.subheader(f"📊 Todos os jogos da liga: {liga_selecionada}")
-    st.dataframe(
-        df_detalhe[colunas].sort_values(by='Data_str', ascending=False),
-        use_container_width=True
-    )
-
-    df_0x1 = df_detalhe[df_detalhe['Placar'] == "0 x 1"]
-
-    st.subheader("❌ Jogos que terminaram 0 x 1")
-
-    if len(df_0x1) > 0:
-        st.dataframe(
-            df_0x1[colunas].sort_values(by='Data_str', ascending=False),
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhum jogo 0x1 nessa liga 👍")
+        st.info("Nenhum jogo hoje")
