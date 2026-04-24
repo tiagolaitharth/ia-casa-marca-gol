@@ -18,16 +18,15 @@ if not os.path.exists("resultado_modelo.xlsx"):
 df = pd.read_excel("resultado_modelo.xlsx")
 
 # =========================
-# 🔥 CORREÇÃO DEFINITIVA DE DATA
+# TRATAMENTO DE DATA (ROBUSTO)
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'], format='%d/%m/%Y', errors='coerce').dt.normalize()
-
-# =========================
-# TRATAMENTO
-# =========================
-
+df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
+
+# =========================
+# TRATAMENTO GERAL
+# =========================
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
 df['Placar'] = df['Placar'].replace("-", "🔮")
@@ -49,8 +48,8 @@ def resultado_flag(placar):
 
 df['Resultado'] = df['Placar'].apply(resultado_flag)
 
-# 🔥 hoje no mesmo formato do Data
-hoje = pd.to_datetime(datetime.today().strftime('%d/%m/%Y'), format='%d/%m/%Y')
+# DATA DE HOJE EM STRING
+hoje_str = datetime.today().strftime('%d/%m/%Y')
 
 # =========================
 # ABAS
@@ -160,11 +159,7 @@ with tab1:
         if st.session_state.busca_visit:
             df_ = df_[df_['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
         if st.session_state.busca_data:
-            try:
-                data_busca = pd.to_datetime(st.session_state.busca_data, format='%d/%m/%Y').normalize()
-                df_ = df_[df_['Data'] == data_busca]
-            except:
-                pass
+            df_ = df_[df_['Data_str'] == st.session_state.busca_data]
         return df_
 
     df_filtrado = aplicar(df_filtrado)
@@ -191,14 +186,13 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE
+    # JOGOS DE HOJE (FUNCIONANDO)
     # =========================
 
-    df_hoje = df[df['Data'] == hoje]
-
-    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
-
     st.subheader("📅 Jogos de Hoje")
+
+    df_hoje = df[df['Data_str'] == hoje_str]
+    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
 
     if len(df_hoje_futuro) > 0:
         st.dataframe(
@@ -206,4 +200,4 @@ with tab1:
             use_container_width=True
         )
     else:
-        st.info("Nenhum jogo hoje")
+        st.warning(f"Nenhum jogo encontrado para hoje ({hoje_str})")
