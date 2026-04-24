@@ -32,23 +32,17 @@ def rodar_modelo():
     for c in colunas_base:
         df[c] = df[c].apply(limpar)
 
-    # =========================
     # TARGET
-    # =========================
-
     def extrair_alvo(placar):
         try:
             gols = int(str(placar).split('x')[0].strip())
             return 1 if gols > 0 else 0
         except:
-            return None
+            return 0
 
     df['ALVO'] = df['Placar'].apply(extrair_alvo)
 
-    # =========================
-    # FEATURES (NO DF INTEIRO)
-    # =========================
-
+    # FEATURES
     df['FORCA_ATAQUE_CASA'] = df['MÉDIA GOL A FAVOR CASA'] * df['% Marca Gol Casa']
     df['FRAGILIDADE_DEFESA_FORA'] = df['MÉDIA GOLS CONTRA FORA']
     df['INDICE_GOL_CASA'] = df['FORCA_ATAQUE_CASA'] - df['FRAGILIDADE_DEFESA_FORA']
@@ -63,21 +57,11 @@ def rodar_modelo():
         'PRESSAO_VISITANTE'
     ]
 
-    # =========================
-    # SEPARAÇÃO (CORRETA)
-    # =========================
-
-    df_passado = df[df['Placar'] != "-"].copy()
-
-    # =========================
-    # TREINO
-    # =========================
-
-    X_train = df_passado[colunas].fillna(0)
-    y_train = df_passado['ALVO']
+    X = df[colunas].fillna(0)
+    y = df['ALVO']
 
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
+    X_scaled = scaler.fit_transform(X)
 
     print("Treinando modelo...")
 
@@ -87,22 +71,13 @@ def rodar_modelo():
         random_state=42
     )
 
-    modelo.fit(X_train_scaled, y_train)
+    modelo.fit(X_scaled, y)
 
-    # =========================
-    # PREVISÃO (TODOS OS JOGOS)
-    # =========================
+    # RESULTADO
+    df_resultado = df.copy()
+    df_resultado['Probabilidade'] = modelo.predict_proba(X_scaled)[:, 1]
 
-    X_all = df[colunas].fillna(0)
-    X_all_scaled = scaler.transform(X_all)
-
-    df['Probabilidade'] = modelo.predict_proba(X_all_scaled)[:, 1]
-
-    # =========================
-    # EXPORTAÇÃO
-    # =========================
-
-    df_resultado = df[[
+    df_resultado = df_resultado[[
         'Liga',
         'Data',
         'Time Casa',
