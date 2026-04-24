@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 st.set_page_config(layout="wide")
 
@@ -18,15 +18,10 @@ if not os.path.exists("resultado_modelo.xlsx"):
 df = pd.read_excel("resultado_modelo.xlsx")
 
 # =========================
-# 🔥 CORREÇÃO AQUI (IMPORTANTE)
-# =========================
-
-df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
-
-# =========================
 # TRATAMENTO
 # =========================
 
+df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
@@ -156,14 +151,14 @@ with tab1:
 
     c4.button("🔄 Limpar", on_click=limpar_filtros)
 
-    def aplicar(df):
+    def aplicar(df_):
         if st.session_state.busca_casa:
-            df = df[df['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
+            df_ = df_[df_['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
         if st.session_state.busca_visit:
-            df = df[df['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
+            df_ = df_[df_['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
         if st.session_state.busca_data:
-            df = df[df['Data_str'].str.contains(st.session_state.busca_data)]
-        return df
+            df_ = df_[df_['Data_str'].str.contains(st.session_state.busca_data)]
+        return df_
 
     df_filtrado = aplicar(df_filtrado)
 
@@ -191,10 +186,13 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE
+    # JOGOS DE HOJE (CORRIGIDO)
     # =========================
 
-    df_hoje = df[df['Data'].dt.date == hoje]
+    inicio_dia = datetime.combine(hoje, datetime.min.time())
+    fim_dia = inicio_dia + timedelta(days=1)
+
+    df_hoje = df[(df['Data'] >= inicio_dia) & (df['Data'] < fim_dia)]
 
     df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
     df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
