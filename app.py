@@ -18,10 +18,15 @@ if not os.path.exists("resultado_modelo.xlsx"):
 df = pd.read_excel("resultado_modelo.xlsx")
 
 # =========================
+# 🔥 CORREÇÃO AQUI (IMPORTANTE)
+# =========================
+
+df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
+
+# =========================
 # TRATAMENTO
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'])
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
@@ -92,6 +97,7 @@ with tab1:
         st.session_state.busca_visit = ""
         st.session_state.busca_data = ""
 
+    # SIDEBAR
     st.sidebar.header("Filtros")
 
     st.sidebar.slider(
@@ -121,6 +127,7 @@ with tab1:
     placares = sorted(df['Placar'].dropna().unique())
     placar_sidebar = st.sidebar.multiselect("Placar", options=placares)
 
+    # FILTRO BASE
     df_filtrado = df[
         (df['Probabilidade'] >= threshold_min / 100) &
         (df['Probabilidade'] <= threshold_max / 100)
@@ -138,6 +145,7 @@ with tab1:
     if placar_sidebar:
         df_filtrado = df_filtrado[df_filtrado['Placar'].isin(placar_sidebar)]
 
+    # FILTROS TABELA
     st.subheader("🔎 Filtros da tabela")
 
     c1, c2, c3, c4 = st.columns([1,1,1,1])
@@ -159,6 +167,7 @@ with tab1:
 
     df_filtrado = aplicar(df_filtrado)
 
+    # MÉTRICAS
     df_passado = df_filtrado[df_filtrado['Placar'] != "🔮"]
     df_0x1 = df_passado[df_passado['Placar'] == "0 x 1"]
 
@@ -173,12 +182,17 @@ with tab1:
     col2.metric("0x1", erros_0x1)
     col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
 
+    # TABELA PRINCIPAL
     colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar','Resultado','Probabilidade (%)']
 
     st.dataframe(
         df_filtrado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
         use_container_width=True
     )
+
+    # =========================
+    # JOGOS DE HOJE
+    # =========================
 
     df_hoje = df[df['Data'].dt.date == hoje]
 
