@@ -124,8 +124,8 @@ with tab1:
 
     # FILTRO BASE
     df_filtrado = df[
-        (df['Probabilidade'] >= threshold_min / 100) &
-        (df['Probabilidade'] <= threshold_max / 100)
+        (df['Probabilidade (%)'] >= threshold_min) &
+        (df['Probabilidade (%)'] <= threshold_max)
     ]
 
     if times_sidebar:
@@ -182,7 +182,8 @@ with tab1:
 
     st.dataframe(
         df_filtrado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 
     # =========================
@@ -194,25 +195,140 @@ with tab1:
 
     df_hoje = df[(df['Data'] >= inicio_dia) & (df['Data'] < fim_dia)]
 
-    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
-    df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
+    # Forçar conversão para string e garantir que placares sejam exibidos
+    df_hoje['Placar'] = df_hoje['Placar'].astype(str)
+    df_hoje['Placar_Display'] = df_hoje['Placar'].apply(
+        lambda x: x if x != "🔮" else "⏳ Aguardando"
+    )
+
+    # Separar jogos futuros e finalizados
+    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"].copy()
+    df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"].copy()
 
     st.subheader("📅 Jogos de Hoje")
 
-    st.markdown("#### 🔮 Jogos de Hoje (Futuros)")
-    if len(df_hoje_futuro) > 0:
-        st.dataframe(
-            df_hoje_futuro[colunas].sort_values(by='Probabilidade (%)', ascending=False),
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhum jogo futuro hoje")
+    # Abas para melhor organização
+    tab_hoje_futuro, tab_hoje_finalizado = st.tabs(["🔮 Futuros", "✅ Finalizados"])
 
-    st.markdown("#### ✅ Jogos de Hoje (Finalizados)")
-    if len(df_hoje_finalizado) > 0:
-        st.dataframe(
-            df_hoje_finalizado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhum jogo finalizado hoje")
+    with tab_hoje_futuro:
+        if len(df_hoje_futuro) > 0:
+            colunas_exibicao = ['Liga', 'Data_str', 'Time Casa', 'Time Visitante', 'Placar_Display', 'Probabilidade (%)']
+            st.dataframe(
+                df_hoje_futuro[colunas_exibicao].sort_values(by='Probabilidade (%)', ascending=False),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("📭 Nenhum jogo futuro programado para hoje")
+
+    with tab_hoje_finalizado:
+        if len(df_hoje_finalizado) > 0:
+            # Ordenar por horário (mais recentes primeiro)
+            df_hoje_finalizado = df_hoje_finalizado.sort_values(by='Data', ascending=False)
+            
+            # Adicionar indicador visual de acerto/erro
+            df_hoje_finalizado['Acertou?'] = df_hoje_finalizado['Placar'].apply(
+                lambda x: "✅ Sim" if int(x.split('x')[0].strip()) > 0 else "❌ Não"
+            )
+            
+            colunas_exibicao = ['Liga', 'Data_str', 'Time Casa', 'Time Visitante', 'Placar', 'Acertou?', 'Probabilidade (%)']
+            
+            st.dataframe(
+                df_hoje_finalizado[colunas_exibicao],
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Placar": st.column_config.TextColumn("Placar Final"),
+                    "Acertou?": st.column_config.TextColumn("Casa Marcou Gol?"),
+                    "Probabilidade (%)": st.column_config.ProgressColumn(
+                        "Probabilidade",
+                        format="%.1f%%",
+                        min_value=0,
+                        max_value=100,
+                    )
+                }
+            )
+            
+            # Métrica de acerto do dia
+            total_jogos = len(df_hoje_finalizado)
+            acertos = len(df_hoje_finalizado[df_hoje_finalizado['Acertou?'] == "✅ Sim"])
+            taxa_acerto = (acertos / total_jogos * 100) if total_jogos > 0 else 0
+            
+            st.success(f"🎯 **Taxa de acerto hoje:** {acertos}/{total_jogos} ({taxa_acerto:.1f}%)")
+            
+            # Mostrar quais jogos errou
+            erros = df_hoje_finalizado[df_hoje_finalizado['Acertou?'] == "❌ Não"]
+            if len(erros) > 0:
+                with st.expander(f"⚠️ Jogos que deram errado hoje ({len(erros)})"):
+                    st.dataframe(
+                        erros[['Liga', 'Time Casa', 'Time Visitante', 'Placar', 'Probabilidade (%)']],
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        else:
+            st.info("📭 Nenhum jogo finalizado hoje ainda")
+
+# =========================
+# ABA 2 - LIGAS
+# =========================
+
+with tab2:
+    st.subheader("🏆 Análise por Liga")
+    
+    # Selectbox para escolher liga
+    ligas_disponiveis = sorted(df['Liga'].dropna().unique())
+    liga_selecionada = st.selectbox("Selecione a Liga", ligas_disponiveis)
+    
+    if liga_selecionada:
+        df_liga = df[df['Liga'] == liga_selecionada].copy()
+        
+        # Separar jogos passados e futuros
+        df_liga_passado = df_liga[df_liga['Placar'] != "🔮"]
+        df_liga_futuro = df_liga[df_liga['Placar'] == "🔮"]
+        
+        col1_liga, col2_liga, col3_liga = st.columns(3)
+        
+        with col1_liga:
+            st.metric("Total de Jogos", len(df_liga))
+        
+        with col2_liga:
+            if len(df_liga_passado) > 0:
+                acertos_liga = len(df_liga_passado[df_liga_passado['Placar'].apply(
+                    lambda x: int(x.split('x')[0].strip()) > 0
+                )])
+                taxa_liga = (acertos_liga / len(df_liga_passado) * 100)
+                st.metric("Taxa de Acerto", f"{taxa_liga:.1f}%")
+            else:
+                st.metric("Taxa de Acerto", "N/A")
+        
+        with col3_liga:
+            st.metric("Jogos Futuros", len(df_liga_futuro))
+        
+        # Mostrar próximos jogos da liga
+        st.markdown(f"#### 🔮 Próximos Jogos - {liga_selecionada}")
+        if len(df_liga_futuro) > 0:
+            st.dataframe(
+                df_liga_futuro[['Data_str', 'Time Casa', 'Time Visitante', 'Probabilidade (%)']]
+                .sort_values(by='Data', ascending=True),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info(f"Nenhum jogo futuro para {liga_selecionada}")
+        
+        # Mostrar histórico de acertos da liga
+        st.markdown(f"#### 📊 Histórico - {liga_selecionada}")
+        if len(df_liga_passado) > 0:
+            df_liga_passado['Casa_Marcou'] = df_liga_passado['Placar'].apply(
+                lambda x: "Sim" if int(x.split('x')[0].strip()) > 0 else "Não"
+            )
+            
+            # Tabela de contingência simples
+            st.dataframe(
+                df_liga_passado[['Data_str', 'Time Casa', 'Time Visitante', 'Placar', 'Casa_Marcou', 'Probabilidade (%)']]
+                .sort_values(by='Data', ascending=False),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info(f"Nenhum jogo finalizado para {liga_selecionada}")
