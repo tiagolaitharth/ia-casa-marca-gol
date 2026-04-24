@@ -190,17 +190,14 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE (CORRIGIDO)
+    # JOGOS DE HOJE (APENAS FUTUROS)
     # =========================
 
     df_hoje = df[df['Data_str'] == hoje_str]
-
     df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
-    df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
 
     st.subheader("📅 Jogos de Hoje")
 
-    st.markdown("#### 🔮 Jogos de Hoje (Futuros)")
     if len(df_hoje_futuro) > 0:
         st.dataframe(
             df_hoje_futuro[colunas].sort_values(by='Probabilidade (%)', ascending=False),
@@ -208,15 +205,6 @@ with tab1:
         )
     else:
         st.info("Nenhum jogo futuro hoje")
-
-    st.markdown("#### ✅ Jogos de Hoje (Finalizados)")
-    if len(df_hoje_finalizado) > 0:
-        st.dataframe(
-            df_hoje_finalizado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhum jogo finalizado hoje")
 
 # =========================
 # ABA 2 (LIGAS)
