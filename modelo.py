@@ -41,27 +41,19 @@ def rodar_modelo():
             gols = int(str(placar).split('x')[0].strip())
             return 1 if gols > 0 else 0
         except:
-            return None  # importante
+            return None
 
     df['ALVO'] = df['Placar'].apply(extrair_alvo)
 
     # =========================
-    # SEPARAÇÃO (CORREÇÃO)
+    # FEATURES (NO DF INTEIRO)
     # =========================
 
-    df_passado = df[df['Placar'] != "-"].copy()
-    df_futuro = df[df['Placar'] == "-"].copy()
-
-    # =========================
-    # FEATURES
-    # =========================
-
-    for base in [df_passado, df_futuro]:
-        base['FORCA_ATAQUE_CASA'] = base['MÉDIA GOL A FAVOR CASA'] * base['% Marca Gol Casa']
-        base['FRAGILIDADE_DEFESA_FORA'] = base['MÉDIA GOLS CONTRA FORA']
-        base['INDICE_GOL_CASA'] = base['FORCA_ATAQUE_CASA'] - base['FRAGILIDADE_DEFESA_FORA']
-        base['JOGO_TRAVADO'] = base['MÉDIA GOLS TOTAL CASA'] + base['MÉDIA GOLS TOTAL FORA']
-        base['PRESSAO_VISITANTE'] = 1 / base['ODD FORA']
+    df['FORCA_ATAQUE_CASA'] = df['MÉDIA GOL A FAVOR CASA'] * df['% Marca Gol Casa']
+    df['FRAGILIDADE_DEFESA_FORA'] = df['MÉDIA GOLS CONTRA FORA']
+    df['INDICE_GOL_CASA'] = df['FORCA_ATAQUE_CASA'] - df['FRAGILIDADE_DEFESA_FORA']
+    df['JOGO_TRAVADO'] = df['MÉDIA GOLS TOTAL CASA'] + df['MÉDIA GOLS TOTAL FORA']
+    df['PRESSAO_VISITANTE'] = 1 / df['ODD FORA']
 
     colunas = colunas_base + [
         'FORCA_ATAQUE_CASA',
@@ -72,7 +64,13 @@ def rodar_modelo():
     ]
 
     # =========================
-    # TREINO (SÓ PASSADO)
+    # SEPARAÇÃO (CORRETA)
+    # =========================
+
+    df_passado = df[df['Placar'] != "-"].copy()
+
+    # =========================
+    # TREINO
     # =========================
 
     X_train = df_passado[colunas].fillna(0)
@@ -92,7 +90,7 @@ def rodar_modelo():
     modelo.fit(X_train_scaled, y_train)
 
     # =========================
-    # PREVISÃO (TODOS)
+    # PREVISÃO (TODOS OS JOGOS)
     # =========================
 
     X_all = df[colunas].fillna(0)
@@ -101,7 +99,7 @@ def rodar_modelo():
     df['Probabilidade'] = modelo.predict_proba(X_all_scaled)[:, 1]
 
     # =========================
-    # RESULTADO FINAL
+    # EXPORTAÇÃO
     # =========================
 
     df_resultado = df[[
