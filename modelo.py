@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
+from datetime import datetime
 
 ARQUIVO = r'C:\Users\Pichau\OneDrive\BASE DE DADOS.xlsx'
 
@@ -10,6 +11,10 @@ def rodar_modelo():
     df = pd.read_excel(ARQUIVO, header=9)
 
     df.columns = [c.strip() for c in df.columns]
+
+    # =========================
+    # TRATAMENTO BASE
+    # =========================
 
     colunas_base = [
         'ODD CASA',
@@ -32,14 +37,16 @@ def rodar_modelo():
     for c in colunas_base:
         df[c] = df[c].apply(limpar)
 
-    # =========================
-    # SEPARAÇÃO CORRETA
-    # =========================
-
     df['Placar'] = df['Placar'].astype(str).str.strip()
+    df['Data'] = pd.to_datetime(df['Data'])
 
-    df_treino = df[df['Placar'] != "-"].copy()
-    df_prever = df[df['Placar'] == "-"].copy()
+    # =========================
+    # SEPARAÇÃO TREINO
+    # =========================
+
+    hoje = datetime.today().date()
+
+    df_treino = df[df['Data'].dt.date < hoje].copy()
 
     # =========================
     # TARGET (SÓ TREINO)
@@ -55,7 +62,7 @@ def rodar_modelo():
     df_treino['ALVO'] = df_treino['Placar'].apply(extrair_alvo)
 
     # =========================
-    # FEATURES (AMBOS)
+    # FEATURES (TODOS)
     # =========================
 
     def criar_features(df_):
@@ -66,8 +73,8 @@ def rodar_modelo():
         df_['PRESSAO_VISITANTE'] = 1 / df_['ODD FORA']
         return df_
 
+    df = criar_features(df)
     df_treino = criar_features(df_treino)
-    df_prever = criar_features(df_prever)
 
     colunas = colunas_base + [
         'FORCA_ATAQUE_CASA',
@@ -98,26 +105,19 @@ def rodar_modelo():
     modelo.fit(X_scaled, y)
 
     # =========================
-    # PREVISÃO (SÓ FUTURO)
+    # PREVISÃO (TODOS OS JOGOS)
     # =========================
 
-    if len(df_prever) > 0:
-        X_prever = df_prever[colunas].fillna(0)
-        X_prever_scaled = scaler.transform(X_prever)
+    X_total = df[colunas].fillna(0)
+    X_total_scaled = scaler.transform(X_total)
 
-        df_prever['Probabilidade'] = modelo.predict_proba(X_prever_scaled)[:, 1]
-    else:
-        df_prever['Probabilidade'] = []
+    df['Probabilidade'] = modelo.predict_proba(X_total_scaled)[:, 1]
 
     # =========================
-    # JUNTA RESULTADO FINAL
+    # OUTPUT FINAL
     # =========================
 
-    df_treino['Probabilidade'] = None
-
-    df_resultado = pd.concat([df_treino, df_prever])
-
-    df_resultado = df_resultado[[
+    df_resultado = df[[
         'Liga',
         'Data',
         'Time Casa',
