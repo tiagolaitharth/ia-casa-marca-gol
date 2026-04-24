@@ -32,22 +32,36 @@ def rodar_modelo():
     for c in colunas_base:
         df[c] = df[c].apply(limpar)
 
+    # =========================
     # TARGET
+    # =========================
+
     def extrair_alvo(placar):
         try:
             gols = int(str(placar).split('x')[0].strip())
             return 1 if gols > 0 else 0
         except:
-            return 0
+            return None  # importante
 
     df['ALVO'] = df['Placar'].apply(extrair_alvo)
 
+    # =========================
+    # SEPARAÇÃO (CORREÇÃO)
+    # =========================
+
+    df_passado = df[df['Placar'] != "-"].copy()
+    df_futuro = df[df['Placar'] == "-"].copy()
+
+    # =========================
     # FEATURES
-    df['FORCA_ATAQUE_CASA'] = df['MÉDIA GOL A FAVOR CASA'] * df['% Marca Gol Casa']
-    df['FRAGILIDADE_DEFESA_FORA'] = df['MÉDIA GOLS CONTRA FORA']
-    df['INDICE_GOL_CASA'] = df['FORCA_ATAQUE_CASA'] - df['FRAGILIDADE_DEFESA_FORA']
-    df['JOGO_TRAVADO'] = df['MÉDIA GOLS TOTAL CASA'] + df['MÉDIA GOLS TOTAL FORA']
-    df['PRESSAO_VISITANTE'] = 1 / df['ODD FORA']
+    # =========================
+
+    for base in [df_passado, df_futuro]:
+        base['FORCA_ATAQUE_CASA'] = base['MÉDIA GOL A FAVOR CASA'] * base['% Marca Gol Casa']
+        base['FRAGILIDADE_DEFESA_FORA'] = base['MÉDIA GOLS CONTRA FORA']
+        base['INDICE_GOL_CASA'] = base['FORCA_ATAQUE_CASA'] - base['FRAGILIDADE_DEFESA_FORA']
+        base['JOGO_TRAVADO'] = base['MÉDIA GOLS TOTAL CASA'] + base['MÉDIA GOLS TOTAL FORA']
+        base['PRESSAO_VISITANTE'] = 1 / base['ODD FORA']
 
     colunas = colunas_base + [
         'FORCA_ATAQUE_CASA',
@@ -57,11 +71,15 @@ def rodar_modelo():
         'PRESSAO_VISITANTE'
     ]
 
-    X = df[colunas].fillna(0)
-    y = df['ALVO']
+    # =========================
+    # TREINO (SÓ PASSADO)
+    # =========================
+
+    X_train = df_passado[colunas].fillna(0)
+    y_train = df_passado['ALVO']
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_train_scaled = scaler.fit_transform(X_train)
 
     print("Treinando modelo...")
 
@@ -71,13 +89,22 @@ def rodar_modelo():
         random_state=42
     )
 
-    modelo.fit(X_scaled, y)
+    modelo.fit(X_train_scaled, y_train)
 
-    # RESULTADO
-    df_resultado = df.copy()
-    df_resultado['Probabilidade'] = modelo.predict_proba(X_scaled)[:, 1]
+    # =========================
+    # PREVISÃO (TODOS)
+    # =========================
 
-    df_resultado = df_resultado[[
+    X_all = df[colunas].fillna(0)
+    X_all_scaled = scaler.transform(X_all)
+
+    df['Probabilidade'] = modelo.predict_proba(X_all_scaled)[:, 1]
+
+    # =========================
+    # RESULTADO FINAL
+    # =========================
+
+    df_resultado = df[[
         'Liga',
         'Data',
         'Time Casa',
