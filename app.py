@@ -21,7 +21,7 @@ df = pd.read_excel("resultado_modelo.xlsx")
 # TRATAMENTO
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'], errors='coerce').dt.normalize()
+df['Data'] = pd.to_datetime(df['Data'], errors='coerce')
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
@@ -44,7 +44,11 @@ def resultado_flag(placar):
 
 df['Resultado'] = df['Placar'].apply(resultado_flag)
 
-hoje = pd.to_datetime(datetime.today().date())
+# =========================
+# DATA HOJE (STRING)
+# =========================
+
+hoje_str = datetime.today().strftime('%d/%m/%Y')
 
 # =========================
 # ABAS
@@ -186,10 +190,10 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE (CORRIGIDO)
+    # JOGOS DE HOJE (FIX FINAL)
     # =========================
 
-    df_hoje = df[df['Data'] == hoje]
+    df_hoje = df[df['Data_str'] == hoje_str]
 
     df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
     df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
