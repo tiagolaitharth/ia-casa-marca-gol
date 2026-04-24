@@ -2,8 +2,10 @@ import pandas as pd
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
+import os
 
 ARQUIVO = r'C:\Users\Pichau\OneDrive\BASE DE DADOS.xlsx'
+ARQUIVO_RESULTADO = "resultado_modelo.xlsx"
 
 
 def rodar_modelo():
@@ -13,7 +15,7 @@ def rodar_modelo():
     df.columns = [c.strip() for c in df.columns]
 
     # =========================
-    # TRATAMENTO BASE
+    # TRATAMENTO
     # =========================
 
     colunas_base = [
@@ -41,16 +43,11 @@ def rodar_modelo():
     df['Data'] = pd.to_datetime(df['Data'])
 
     # =========================
-    # SEPARAÇÃO TREINO
+    # TREINO (SÓ PASSADO)
     # =========================
 
     hoje = datetime.today().date()
-
     df_treino = df[df['Data'].dt.date < hoje].copy()
-
-    # =========================
-    # TARGET (SÓ TREINO)
-    # =========================
 
     def extrair_alvo(placar):
         try:
@@ -62,7 +59,7 @@ def rodar_modelo():
     df_treino['ALVO'] = df_treino['Placar'].apply(extrair_alvo)
 
     # =========================
-    # FEATURES (TODOS)
+    # FEATURES
     # =========================
 
     def criar_features(df_):
@@ -105,13 +102,45 @@ def rodar_modelo():
     modelo.fit(X_scaled, y)
 
     # =========================
-    # PREVISÃO (TODOS OS JOGOS)
+    # PREVISÃO (TODOS)
     # =========================
 
     X_total = df[colunas].fillna(0)
     X_total_scaled = scaler.transform(X_total)
 
     df['Probabilidade'] = modelo.predict_proba(X_total_scaled)[:, 1]
+
+    # =========================
+    # 🔥 PRESERVAR PROBABILIDADES ANTIGAS
+    # =========================
+
+    if os.path.exists(ARQUIVO_RESULTADO):
+        df_antigo = pd.read_excel(ARQUIVO_RESULTADO)
+
+        df_antigo['Data'] = pd.to_datetime(df_antigo['Data'])
+
+        # chave única
+        df['chave'] = (
+            df['Data'].astype(str) +
+            df['Time Casa'] +
+            df['Time Visitante']
+        )
+
+        df_antigo['chave'] = (
+            df_antigo['Data'].astype(str) +
+            df_antigo['Time Casa'] +
+            df_antigo['Time Visitante']
+        )
+
+        mapa_prob = dict(zip(df_antigo['chave'], df_antigo['Probabilidade']))
+
+        # mantém a probabilidade antiga se já existir
+        df['Probabilidade'] = df.apply(
+            lambda row: mapa_prob[row['chave']] if row['chave'] in mapa_prob else row['Probabilidade'],
+            axis=1
+        )
+
+        df.drop(columns=['chave'], inplace=True)
 
     # =========================
     # OUTPUT FINAL
@@ -126,9 +155,9 @@ def rodar_modelo():
         'Probabilidade'
     ]]
 
-    df_resultado.to_excel("resultado_modelo.xlsx", index=False)
+    df_resultado.to_excel(ARQUIVO_RESULTADO, index=False)
 
-    print("Arquivo gerado com sucesso!")
+    print("Arquivo atualizado com sucesso!")
 
 
 if __name__ == "__main__":
