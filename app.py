@@ -44,7 +44,11 @@ def resultado_flag(placar):
 
 df['Resultado'] = df['Placar'].apply(resultado_flag)
 
-hoje = datetime.today().date()
+# =========================
+# DATA HOJE (CORRIGIDO)
+# =========================
+
+hoje_str = datetime.today().strftime('%d/%m/%Y')
 
 # =========================
 # ABAS
@@ -186,10 +190,10 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE (SEPARADOS)
+    # JOGOS DE HOJE (CORRIGIDO)
     # =========================
 
-    df_hoje = df[df['Data'].dt.date == hoje]
+    df_hoje = df[df['Data_str'] == hoje_str]
 
     df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
     df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
