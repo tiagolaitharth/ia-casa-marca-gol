@@ -21,7 +21,7 @@ df = pd.read_excel("resultado_modelo.xlsx")
 # TRATAMENTO
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'])
+df['Data'] = pd.to_datetime(df['Data'], errors='coerce').dt.normalize()
 df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
@@ -44,7 +44,7 @@ def resultado_flag(placar):
 
 df['Resultado'] = df['Placar'].apply(resultado_flag)
 
-hoje = datetime.today().date()
+hoje = pd.to_datetime(datetime.today().date())
 
 # =========================
 # ABAS
@@ -151,14 +151,14 @@ with tab1:
 
     c4.button("🔄 Limpar", on_click=limpar_filtros)
 
-    def aplicar(df):
+    def aplicar(df_):
         if st.session_state.busca_casa:
-            df = df[df['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
+            df_ = df_[df_['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
         if st.session_state.busca_visit:
-            df = df[df['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
+            df_ = df_[df_['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
         if st.session_state.busca_data:
-            df = df[df['Data_str'].str.contains(st.session_state.busca_data)]
-        return df
+            df_ = df_[df_['Data_str'].str.contains(st.session_state.busca_data)]
+        return df_
 
     df_filtrado = aplicar(df_filtrado)
 
@@ -186,10 +186,10 @@ with tab1:
     )
 
     # =========================
-    # JOGOS DE HOJE (SEPARADOS)
+    # JOGOS DE HOJE (CORRIGIDO)
     # =========================
 
-    df_hoje = df[df['Data'].dt.date == hoje]
+    df_hoje = df[df['Data'] == hoje]
 
     df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
     df_hoje_finalizado = df_hoje[df_hoje['Placar'] != "🔮"]
