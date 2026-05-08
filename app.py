@@ -200,7 +200,19 @@ with tab1:
 
     if len(df_hoje_futuro) > 0:
         st.dataframe(
-            df_hoje_futuro[colunas].sort_values(by='Probabilidade (%)', ascending=False),
+            df_hoje_futuro[[
+                'Liga',
+                'Data_str',
+                'Hora',
+                'Time Casa',
+                'Time Visitante',
+                'Placar',
+                'Resultado',
+                'Probabilidade (%)'
+            ]].sort_values(
+                by='Probabilidade (%)',
+                ascending=False
+            ),
             use_container_width=True
         )
     else:
