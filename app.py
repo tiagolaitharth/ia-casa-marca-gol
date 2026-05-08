@@ -158,11 +158,18 @@ with tab1:
 
     def aplicar(df):
         if st.session_state.busca_casa:
-            df = df[df['Time Casa'].str.contains(st.session_state.busca_casa, case=False)]
+            df = df[df['Time Casa'].str.lower().str.startswith(
+                st.session_state.busca_casa.lower()
+            )]
+
         if st.session_state.busca_visit:
-            df = df[df['Time Visitante'].str.contains(st.session_state.busca_visit, case=False)]
+            df = df[df['Time Visitante'].str.lower().str.startswith(
+                st.session_state.busca_visit.lower()
+            )]
+
         if st.session_state.busca_data:
             df = df[df['Data_str'].str.contains(st.session_state.busca_data)]
+
         return df
 
     df_filtrado = aplicar(df_filtrado)
