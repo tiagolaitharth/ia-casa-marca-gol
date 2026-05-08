@@ -2,10 +2,60 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+from usuarios import usuarios
 
 st.set_page_config(layout="wide")
 
-st.title("📊 IA - Casa Marca Gol")
+st.title("📊 Sistema IA")
+
+# =========================
+# LOGIN
+# =========================
+
+if "logado" not in st.session_state:
+    st.session_state.logado = False
+
+if not st.session_state.logado:
+
+    st.subheader("🔐 Login")
+
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+
+        if usuario in usuarios:
+
+            dados_usuario = usuarios[usuario]
+
+            senha_correta = dados_usuario["senha"]
+            data_expiracao = datetime.strptime(
+                dados_usuario["expira"],
+                "%Y-%m-%d"
+            ).date()
+
+            hoje = datetime.today().date()
+
+            if senha == senha_correta:
+
+                if hoje <= data_expiracao:
+
+                    st.session_state.logado = True
+                    st.session_state.usuario = usuario
+                    st.session_state.tipo = dados_usuario["tipo"]
+
+                    st.rerun()
+
+                else:
+                    st.error("Acesso expirado")
+
+            else:
+                st.error("Senha incorreta")
+
+        else:
+            st.error("Usuário não encontrado")
+
+    st.stop()
 
 # =========================
 # VERIFICAÇÃO
