@@ -244,7 +244,7 @@ with tab1:
     col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
 
     # TABELA PRINCIPAL
-    colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar','Resultado','Probabilidade (%)']
+    colunas = ['Liga','Data_str','Time Casa','Time Visitante','Placar_Visual','Resultado','Probabilidade (%)']
 
     st.dataframe(
         df_filtrado[colunas].sort_values(by='Probabilidade (%)', ascending=False),
@@ -256,7 +256,7 @@ with tab1:
     # =========================
 
     df_hoje = df[df['Data_str'] == hoje_str]
-    df_hoje_futuro = df_hoje[df_hoje['Placar'] == "🔮"]
+    df_hoje_futuro = df_hoje[df_hoje['Placar_Visual'] == "🔮"]
 
     st.subheader("📅 Jogos de Hoje")
 
@@ -268,7 +268,7 @@ with tab1:
                 'Hora',
                 'Time Casa',
                 'Time Visitante',
-                'Placar',
+                'Placar_Visual',
                 'Resultado',
                 'Probabilidade (%)'
             ]].sort_values(
@@ -310,7 +310,7 @@ with tab2:
 
     df_detalhe = df[df['Liga'] == liga_selecionada]
 
-    colunas = ['Data_str','Time Casa','Time Visitante','Placar','Resultado']
+    colunas = ['Data_str','Time Casa','Time Visitante','Placar_Visual','Resultado']
 
     st.subheader(f"📊 Todos os jogos da liga: {liga_selecionada}")
     st.dataframe(
