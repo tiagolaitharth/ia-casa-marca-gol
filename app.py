@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-from usuarios import usuarios
+usuarios = st.secrets["usuarios"]
+
 
 st.set_page_config(layout="wide")
 
