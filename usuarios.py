@@ -7,7 +7,7 @@ usuarios = {
     },
 
     "teste.sistema": {
-        "senha": "abc123",
+        "senha": "978024",
         "tipo": "vip",
         "expira": "2026-05-09"
     }
