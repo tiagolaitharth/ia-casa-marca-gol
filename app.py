@@ -256,7 +256,14 @@ with tab1:
     # =========================
 
     df_hoje = df[df['Data_str'] == hoje_str]
-    df_hoje_futuro = df_hoje[df_hoje['Placar_Visual'] == "🔮"]
+    df_hoje_futuro = df_hoje[
+    (
+        df_hoje['Resultado'] == ""
+    ) |
+    (
+        df_hoje['Resultado'] == "🔮"
+    )
+]
 
     st.subheader("📅 Jogos de Hoje")
 
