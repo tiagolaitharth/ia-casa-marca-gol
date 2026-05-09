@@ -76,7 +76,11 @@ df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
-df['Placar'] = df['Placar'].replace("-", "🔮")
+df['Placar'] = df['Placar'].replace([
+    "-",
+    "",
+    "nan"
+], "🔮")
 
 df['Probabilidade (%)'] = (df['Probabilidade'] * 100).round(2)
 
