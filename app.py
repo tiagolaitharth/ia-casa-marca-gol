@@ -2,10 +2,61 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+from usuarios import usuarios
 
 st.set_page_config(layout="wide")
 
-st.title("📊 IA - Casa Marca Gol")
+st.title("📊 Sistema IA")
+
+# =========================
+# LOGIN
+# =========================
+
+if "logado" not in st.session_state:
+    st.session_state.logado = False
+
+if not st.session_state.logado:
+
+    st.subheader("🔐 Login")
+
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+
+        if usuario in usuarios:
+
+            dados_usuario = usuarios[usuario]
+
+            senha_correta = dados_usuario["senha"]
+
+            data_expiracao = datetime.strptime(
+                dados_usuario["expira"],
+                "%Y-%m-%d"
+            ).date()
+
+            hoje = datetime.today().date()
+
+            if senha == senha_correta:
+
+                if hoje <= data_expiracao:
+
+                    st.session_state.logado = True
+                    st.session_state.usuario = usuario
+                    st.session_state.tipo = dados_usuario["tipo"]
+
+                    st.rerun()
+
+                else:
+                    st.error("Acesso expirado")
+
+            else:
+                st.error("Senha incorreta")
+
+        else:
+            st.error("Usuário não encontrado")
+
+    st.stop()
 
 # =========================
 # VERIFICAÇÃO
@@ -26,21 +77,29 @@ df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
 
+df['Placar'] = df['Placar'].fillna("-")
 df['Placar'] = df['Placar'].astype(str).str.strip()
+
 df['Placar'] = df['Placar'].replace("-", "🔮")
 
-df['Probabilidade (%)'] = (df['Probabilidade'] * 100).round(2)
+df['Probabilidade (%)'] = (
+    df['Probabilidade'] * 100
+).round(2)
 
 # =========================
 # RESULTADO VISUAL
 # =========================
 
 def resultado_flag(placar):
+
     if placar == "🔮":
         return "🔮"
+
     try:
         gols = int(placar.split('x')[0].strip())
+
         return "🟢 V" if gols > 0 else "🔴 X"
+
     except:
         return ""
 
@@ -56,7 +115,10 @@ hoje_str = datetime.today().strftime('%d/%m/%Y')
 # ABAS
 # =========================
 
-tab1, tab2 = st.tabs(["📊 Análise Geral", "🏆 Ligas"])
+tab1, tab2 = st.tabs([
+    "📊 Análise Geral",
+    "🏆 Ligas"
+])
 
 # =========================
 # ABA 1
@@ -83,21 +145,31 @@ with tab1:
         st.session_state.busca_data = ""
 
     def update_from_slider():
-        st.session_state.min_prob = st.session_state.slider_range[0]
-        st.session_state.max_prob = st.session_state.slider_range[1]
+
+        st.session_state.min_prob = (
+            st.session_state.slider_range[0]
+        )
+
+        st.session_state.max_prob = (
+            st.session_state.slider_range[1]
+        )
 
     def update_from_input():
+
         st.session_state.slider_range = (
             st.session_state.min_prob,
             st.session_state.max_prob
         )
 
     def limpar_range():
+
         st.session_state.slider_range = (0, 100)
+
         st.session_state.min_prob = 0
         st.session_state.max_prob = 100
 
     def limpar_filtros():
+
         st.session_state.busca_casa = ""
         st.session_state.busca_visit = ""
         st.session_state.busca_data = ""
@@ -144,7 +216,9 @@ with tab1:
     st.sidebar.subheader("Filtros Avançados")
 
     todos_times = sorted(
-        set(df['Time Casa']).union(set(df['Time Visitante']))
+        set(df['Time Casa']).union(
+            set(df['Time Visitante'])
+        )
     )
 
     times_sidebar = st.sidebar.multiselect(
@@ -180,17 +254,20 @@ with tab1:
     ]
 
     if times_sidebar:
+
         df_filtrado = df_filtrado[
             df_filtrado['Time Casa'].isin(times_sidebar) |
             df_filtrado['Time Visitante'].isin(times_sidebar)
         ]
 
     if ligas_sidebar:
+
         df_filtrado = df_filtrado[
             df_filtrado['Liga'].isin(ligas_sidebar)
         ]
 
     if placar_sidebar:
+
         df_filtrado = df_filtrado[
             df_filtrado['Placar'].isin(placar_sidebar)
         ]
@@ -215,6 +292,7 @@ with tab1:
     def aplicar(df):
 
         if st.session_state.busca_casa:
+
             df = df[
                 df['Time Casa'].str.lower().str.startswith(
                     st.session_state.busca_casa.lower()
@@ -222,6 +300,7 @@ with tab1:
             ]
 
         if st.session_state.busca_visit:
+
             df = df[
                 df['Time Visitante'].str.lower().str.startswith(
                     st.session_state.busca_visit.lower()
@@ -229,6 +308,7 @@ with tab1:
             ]
 
         if st.session_state.busca_data:
+
             df = df[
                 df['Data_str'].str.contains(
                     st.session_state.busca_data
@@ -243,7 +323,9 @@ with tab1:
     # MÉTRICAS
     # =========================
 
-    df_passado = df_filtrado[df_filtrado['Placar'] != "🔮"]
+    df_passado = df_filtrado[
+        df_filtrado['Placar'] != "🔮"
+    ]
 
     df_0x1 = df_passado[
         df_passado['Placar'] == "0 x 1"
@@ -291,7 +373,9 @@ with tab1:
     # JOGOS DE HOJE
     # =========================
 
-    df_hoje = df[df['Data_str'] == hoje_str]
+    df_hoje = df[
+        df['Data_str'] == hoje_str
+    ]
 
     df_hoje_futuro = df_hoje[
         df_hoje['Placar'] == "🔮"
@@ -320,85 +404,3 @@ with tab1:
 
     else:
         st.info("Nenhum jogo futuro hoje")
-
-# =========================
-# ABA 2
-# =========================
-
-with tab2:
-
-    st.subheader("🏆 Análise por Ligas")
-
-    df_ligas = df[
-        df['Placar'] != "🔮"
-    ].copy()
-
-    resumo = df_ligas.groupby('Liga').agg(
-        Jogos=('Liga', 'count'),
-        Erros_0x1=(
-            'Placar',
-            lambda x: (x == "0 x 1").sum()
-        )
-    ).reset_index()
-
-    resumo['Taxa_0x1 (%)'] = (
-        resumo['Erros_0x1'] / resumo['Jogos'] * 100
-    ).round(2)
-
-    resumo = resumo.sort_values(
-        by='Jogos',
-        ascending=False
-    )
-
-    st.dataframe(
-        resumo,
-        use_container_width=True
-    )
-
-    liga_selecionada = st.selectbox(
-        "Selecionar Liga",
-        options=resumo['Liga']
-    )
-
-    df_detalhe = df[
-        df['Liga'] == liga_selecionada
-    ]
-
-    colunas = [
-        'Data_str',
-        'Time Casa',
-        'Time Visitante',
-        'Placar',
-        'Resultado'
-    ]
-
-    st.subheader(
-        f"📊 Todos os jogos da liga: {liga_selecionada}"
-    )
-
-    st.dataframe(
-        df_detalhe[colunas].sort_values(
-            by='Data_str',
-            ascending=False
-        ),
-        use_container_width=True
-    )
-
-    df_0x1 = df_detalhe[
-        df_detalhe['Placar'] == "0 x 1"
-    ]
-
-    st.subheader("❌ Jogos que terminaram 0 x 1")
-
-    if len(df_0x1) > 0:
-
-        st.dataframe(
-            df_0x1[colunas].sort_values(
-                by='Data_str',
-                ascending=False
-            ),
-            use_container_width=True
-        )
-
-    else:
-        st.info("Nenhum jogo 0x1 nessa liga 👍")
