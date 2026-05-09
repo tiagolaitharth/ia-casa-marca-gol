@@ -373,34 +373,47 @@ with tab1:
     # JOGOS DE HOJE
     # =========================
 
-    df_hoje = df[
-        df['Data_str'] == hoje_str
-    ]
+df_hoje = df[
+    df['Data_str'] == hoje_str
+]
 
-    df_hoje_futuro = df_hoje[
+st.subheader("📅 Jogos de Hoje")
+
+st.write(df_hoje[['Data_str', 'Time Casa', 'Placar']])
+
+df_hoje_futuro = df_hoje[
+    (
+        df_hoje['Placar'].isna()
+    ) |
+    (
+        df_hoje['Placar'] == "-"
+    ) |
+    (
         df_hoje['Placar'] == "🔮"
-    ]
+    ) |
+    (
+        df_hoje['Placar'].astype(str).str.strip() == ""
+    )
+]
 
-    st.subheader("📅 Jogos de Hoje")
+if len(df_hoje_futuro) > 0:
 
-    if len(df_hoje_futuro) > 0:
+    st.dataframe(
+        df_hoje_futuro[[
+            'Liga',
+            'Data_str',
+            'Hora',
+            'Time Casa',
+            'Time Visitante',
+            'Placar',
+            'Resultado',
+            'Probabilidade (%)'
+        ]].sort_values(
+            by='Probabilidade (%)',
+            ascending=False
+        ),
+        use_container_width=True
+    )
 
-        st.dataframe(
-            df_hoje_futuro[[
-                'Liga',
-                'Data_str',
-                'Hora',
-                'Time Casa',
-                'Time Visitante',
-                'Placar',
-                'Resultado',
-                'Probabilidade (%)'
-            ]].sort_values(
-                by='Probabilidade (%)',
-                ascending=False
-            ),
-            use_container_width=True
-        )
-
-    else:
-        st.info("Nenhum jogo futuro hoje")
+else:
+    st.info("Nenhum jogo futuro hoje")
