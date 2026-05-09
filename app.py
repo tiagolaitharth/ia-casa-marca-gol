@@ -80,7 +80,12 @@ df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
 df['Placar'] = df['Placar'].fillna("-")
 df['Placar'] = df['Placar'].astype(str).str.strip()
 
-df['Placar'] = df['Placar'].replace("-", "🔮")
+df['Placar'] = df['Placar'].replace([
+    "-",
+    "nan",
+    "",
+    "empty"
+], "🔮")
 
 df['Probabilidade (%)'] = (
     df['Probabilidade'] * 100
@@ -378,8 +383,6 @@ df_hoje = df[
 ]
 
 st.subheader("📅 Jogos de Hoje")
-
-st.write(df_hoje[['Data_str', 'Time Casa', 'Placar']])
 
 df_hoje_futuro = df_hoje[
     (
