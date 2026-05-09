@@ -77,15 +77,8 @@ df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 
 df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
 
-df['Placar'] = df['Placar'].fillna("-")
 df['Placar'] = df['Placar'].astype(str).str.strip()
-
-df['Placar'] = df['Placar'].replace([
-    "-",
-    "nan",
-    "",
-    "empty"
-], "🔮")
+df['Placar'] = df['Placar'].replace("-", "🔮")
 
 df['Probabilidade (%)'] = (
     df['Probabilidade'] * 100
@@ -101,7 +94,10 @@ def resultado_flag(placar):
         return "🔮"
 
     try:
-        gols = int(placar.split('x')[0].strip())
+
+        gols = int(
+            placar.split('x')[0].strip()
+        )
 
         return "🟢 V" if gols > 0 else "🔴 X"
 
@@ -378,45 +374,34 @@ with tab1:
     # JOGOS DE HOJE
     # =========================
 
-df_hoje = df[
-    df['Data_str'] == hoje_str
-]
+    df_hoje = df[
+        df['Data_str'] == hoje_str
+    ]
 
-st.subheader("📅 Jogos de Hoje")
-
-df_hoje_futuro = df_hoje[
-    (
-        df_hoje['Placar'].isna()
-    ) |
-    (
-        df_hoje['Placar'] == "-"
-    ) |
-    (
+    df_hoje_futuro = df_hoje[
         df_hoje['Placar'] == "🔮"
-    ) |
-    (
-        df_hoje['Placar'].astype(str).str.strip() == ""
-    )
-]
+    ]
 
-if len(df_hoje_futuro) > 0:
+    st.subheader("📅 Jogos de Hoje")
 
-    st.dataframe(
-        df_hoje_futuro[[
-            'Liga',
-            'Data_str',
-            'Hora',
-            'Time Casa',
-            'Time Visitante',
-            'Placar',
-            'Resultado',
-            'Probabilidade (%)'
-        ]].sort_values(
-            by='Probabilidade (%)',
-            ascending=False
-        ),
-        use_container_width=True
-    )
+    if len(df_hoje_futuro) > 0:
 
-else:
-    st.info("Nenhum jogo futuro hoje")
+        st.dataframe(
+            df_hoje_futuro[[
+                'Liga',
+                'Data_str',
+                'Hora',
+                'Time Casa',
+                'Time Visitante',
+                'Placar',
+                'Resultado',
+                'Probabilidade (%)'
+            ]].sort_values(
+                by='Probabilidade (%)',
+                ascending=False
+            ),
+            use_container_width=True
+        )
+
+    else:
+        st.info("Nenhum jogo futuro hoje")
