@@ -89,13 +89,18 @@ df['Probabilidade (%)'] = (df['Probabilidade'] * 100).round(2)
 # =========================
 
 def resultado_flag(placar):
-    if placar == "🔮":
+
+    placar = str(placar).strip()
+
+    if placar in ["-", "", "nan"]:
         return "🔮"
+
     try:
         gols = int(placar.split('x')[0].strip())
         return "🟢 V" if gols > 0 else "🔴 X"
+
     except:
-        return ""
+        return "🔮"
 
 df['Resultado'] = df['Placar'].apply(resultado_flag)
 
@@ -256,14 +261,7 @@ with tab1:
     # =========================
 
     df_hoje = df[df['Data_str'] == hoje_str]
-    df_hoje_futuro = df_hoje[
-    (
-        df_hoje['Resultado'] == ""
-    ) |
-    (
-        df_hoje['Resultado'] == "🔮"
-    )
-]
+    df_hoje_futuro = df_hoje[df_hoje['Resultado'] == "🔮"]
 
     st.subheader("📅 Jogos de Hoje")
 
