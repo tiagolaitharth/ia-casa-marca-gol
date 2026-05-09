@@ -76,7 +76,7 @@ df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
 df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
 
 df['Placar'] = df['Placar'].astype(str).str.strip()
-df['Placar'] = df['Placar'].replace([
+df['Placar_Visual'] = df['Placar'].replace([
     "-",
     "",
     "nan"
