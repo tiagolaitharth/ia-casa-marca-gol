@@ -1,21 +1,11 @@
 @echo off
 
-echo =========================
-echo ATUALIZANDO MODELO...
-echo =========================
+cd /d "C:\Users\Pichau\OneDrive\testebanco"
 
 python modelo.py
 
-echo =========================
-echo ENVIANDO PARA GITHUB...
-echo =========================
-
 git add .
-git commit -m "update geral"
+
+git commit -m "Atualizacao automatica"
+
 git push
-
-echo =========================
-echo FINALIZADO!
-echo =========================
-
-pause
