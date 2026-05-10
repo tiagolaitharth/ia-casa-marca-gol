@@ -2,7 +2,10 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+from collections import Counter
+import re
 usuarios = st.secrets["usuarios"]
+
 
 
 st.set_page_config(layout="wide")
@@ -110,9 +113,10 @@ df['Resultado'] = df['Placar'].apply(resultado_flag)
 # ABAS
 # =========================
 
-tab1, tab2 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "📊 Análise Geral",
-    "🏆 Ligas"
+    "🏆 Ligas",
+    "⚽ Placares"
 ])
 
 # =========================
@@ -168,10 +172,6 @@ with tab1:
         st.session_state.busca_casa = ""
         st.session_state.busca_visit = ""
         st.session_state.busca_data = ""
-
-    # =========================
-    # SIDEBAR
-    # =========================
 
     st.sidebar.header("Filtros")
 
@@ -343,6 +343,24 @@ with tab1:
     col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
 
     # =========================
+    # PROCESSAR PLACARES
+    # =========================
+
+    col_btn_proc1, col_btn_proc2 = st.columns([1,4])
+
+    with col_btn_proc1:
+
+        if st.button("⚽ Processar Placares"):
+
+            placares_processados = df_filtrado[
+                df_filtrado['Placar'] != "🔮"
+            ]['Placar'].dropna().tolist()
+
+            st.session_state.placares_processados = placares_processados
+
+            st.success("Processados, vá para Placares")
+
+    # =========================
     # TABELA PRINCIPAL
     # =========================
 
@@ -397,7 +415,7 @@ with tab1:
         st.info("Nenhum jogo futuro")
 
 # =========================
-# ABA 2 (LIGAS)
+# ABA 2 - LIGAS
 # =========================
 
 with tab2:
@@ -419,46 +437,260 @@ with tab2:
 
     st.dataframe(resumo, use_container_width=True)
 
-    liga_selecionada = st.selectbox(
-        "Selecionar Liga",
-        options=resumo['Liga']
-    )
+# =========================
+# ABA 3 - PLACARES
+# =========================
 
-    df_detalhe = df[df['Liga'] == liga_selecionada]
+with tab3:
 
-    colunas_liga = [
-        'Data_str',
-        'Time Casa',
-        'Time Visitante',
-        'Placar',
-        'Resultado'
-    ]
+    st.subheader("⚽ Análise de Placares")
 
-    st.subheader(f"📊 Todos os jogos da liga: {liga_selecionada}")
+    if "placares_processados" not in st.session_state:
 
-    st.dataframe(
-        df_detalhe[colunas_liga].sort_values(
-            by='Data_str',
-            ascending=False
-        ),
-        use_container_width=True
-    )
-
-    df_0x1_liga = df_detalhe[
-        df_detalhe['Placar'] == "0 x 1"
-    ]
-
-    st.subheader("❌ Jogos que terminaram 0 x 1")
-
-    if len(df_0x1_liga) > 0:
-
-        st.dataframe(
-            df_0x1_liga[colunas_liga].sort_values(
-                by='Data_str',
-                ascending=False
-            ),
-            use_container_width=True
-        )
+        st.info("Processe os placares na aba principal")
 
     else:
-        st.info("Nenhum jogo 0x1 nessa liga 👍")
+
+        placares = st.session_state.placares_processados
+
+        def normalizar(linha):
+
+            linha = str(linha).strip().lower()
+
+            if not linha:
+                return None
+
+            m = re.match(r"^\s*(\d+)\D+(\d+)\s*$", linha)
+
+            if not m:
+                return None
+
+            a, b = m.groups()
+
+            return f"{int(a)} x {int(b)}"
+
+        def classificar(placar):
+
+            a, b = map(int, placar.split(" x "))
+
+            if a > b:
+                return "casa"
+
+            elif a == b:
+                return "empate"
+
+            else:
+                return "fora"
+
+        placares_validos = []
+        invalidos = 0
+
+        for l in placares:
+
+            p = normalizar(l)
+
+            if p:
+                placares_validos.append(p)
+
+            else:
+                invalidos += 1
+
+        if not placares_validos:
+
+            st.warning("Nenhum placar válido encontrado.")
+
+        else:
+
+            freq = Counter(placares_validos)
+
+            total = sum(freq.values())
+
+            casa = []
+            empate = []
+            fora = []
+
+            for placar, qtd in freq.items():
+
+                perc = (qtd / total) * 100
+
+                tipo = classificar(placar)
+
+                item = (placar, qtd, perc)
+
+                if tipo == "casa":
+                    casa.append(item)
+
+                elif tipo == "empate":
+                    empate.append(item)
+
+                else:
+                    fora.append(item)
+
+            total_casa = sum(q for _, q, _ in casa)
+            total_empate = sum(q for _, q, _ in empate)
+            total_fora = sum(q for _, q, _ in fora)
+
+            casa = sorted(casa, key=lambda x: x[1], reverse=True)
+            empate = sorted(empate, key=lambda x: x[1], reverse=True)
+            fora = sorted(fora, key=lambda x: x[1], reverse=True)
+
+            st.subheader("📌 Resumo geral")
+
+            col_r1, col_r2, col_r3 = st.columns(3)
+
+            with col_r1:
+                st.metric(
+                    "🏠 Casa",
+                    f"{total_casa}",
+                    f"{(total_casa/total)*100:.2f}%"
+                )
+
+            with col_r2:
+                st.metric(
+                    "🤝 Empate",
+                    f"{total_empate}",
+                    f"{(total_empate/total)*100:.2f}%"
+                )
+
+            with col_r3:
+                st.metric(
+                    "🚗 Fora",
+                    f"{total_fora}",
+                    f"{(total_fora/total)*100:.2f}%"
+                )
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+
+                st.subheader("🏠 Casa")
+
+                for p, q, pc in casa:
+                    st.write(f"{p} → {q} ({pc:.2f}%)")
+
+            with col2:
+
+                st.subheader("🤝 Empate")
+
+                for p, q, pc in empate:
+                    st.write(f"{p} → {q} ({pc:.2f}%)")
+
+            with col3:
+
+                st.subheader("🚗 Fora")
+
+                for p, q, pc in fora:
+                    st.write(f"{p} → {q} ({pc:.2f}%)")
+
+            st.success(
+                f"Total válido: {total} | Inválidos: {invalidos}"
+            )
+
+    # =========================
+    # PREVISÃO MANUAL
+    # =========================
+
+    st.divider()
+
+    st.header("2) Previsão (Casa x Fora)")
+
+    if "lista_casa" not in st.session_state:
+        st.session_state.lista_casa = ""
+
+    if "lista_fora" not in st.session_state:
+        st.session_state.lista_fora = ""
+
+    col_btn3, col_btn4 = st.columns(2)
+
+    with col_btn3:
+        gerar = st.button("Gerar previsão")
+
+    with col_btn4:
+
+        if st.button("Limpar previsão"):
+
+            st.session_state.lista_casa = ""
+            st.session_state.lista_fora = ""
+
+            st.rerun()
+
+    lista_casa = st.text_area(
+        "Lista CASA:",
+        height=150,
+        key="lista_casa"
+    )
+
+    lista_fora = st.text_area(
+        "Lista FORA:",
+        height=150,
+        key="lista_fora"
+    )
+
+    if gerar:
+
+        def extrair_gols(lista):
+
+            gols = []
+
+            for linha in lista.splitlines():
+
+                p = normalizar(linha)
+
+                if p:
+
+                    a, b = map(int, p.split(" x "))
+
+                    gols.append(a)
+
+            return gols
+
+        gols_casa = extrair_gols(lista_casa)
+        gols_fora = extrair_gols(lista_fora)
+
+        if not gols_casa or not gols_fora:
+
+            st.warning("Preencha as duas listas corretamente.")
+
+        else:
+
+            freq_casa = Counter(gols_casa)
+            freq_fora = Counter(gols_fora)
+
+            total_casa = sum(freq_casa.values())
+            total_fora = sum(freq_fora.values())
+
+            prob_casa = {
+                g: freq_casa[g] / total_casa
+                for g in freq_casa
+            }
+
+            prob_fora = {
+                g: freq_fora[g] / total_fora
+                for g in freq_fora
+            }
+
+            resultados = []
+
+            for g1 in prob_casa:
+
+                for g2 in prob_fora:
+
+                    prob = prob_casa[g1] * prob_fora[g2]
+
+                    resultados.append(
+                        (f"{g1} x {g2}", prob)
+                    )
+
+            resultados = sorted(
+                resultados,
+                key=lambda x: x[1],
+                reverse=True
+            )
+
+            st.subheader("📊 Top placares previstos")
+
+            for placar, prob in resultados[:15]:
+
+                st.write(
+                    f"{placar} → {prob*100:.2f}%"
+                )
