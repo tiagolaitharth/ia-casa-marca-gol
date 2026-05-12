@@ -720,7 +720,7 @@ with tab3:
 
             return f"{int(a)} x {int(b)}"
 
-        def classificar(placar):
+    def classificar(placar):
 
             a, b = map(int, placar.split(" x "))
 
