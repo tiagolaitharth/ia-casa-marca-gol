@@ -704,15 +704,7 @@ with tab3:
 
     st.subheader("⚽ Análise de Placares")
 
-    if "placares_processados" not in st.session_state:
-
-        st.info("Processe os placares na aba principal")
-
-    else:
-
-        placares = st.session_state.placares_processados
-
-        def normalizar(linha):
+    def normalizar(linha):
 
             linha = str(linha).strip().lower()
 
@@ -740,6 +732,16 @@ with tab3:
 
             else:
                 return "fora"
+
+    if "placares_processados" not in st.session_state:
+
+        st.info("Processe os placares na aba principal")
+
+    else:
+
+        placares = st.session_state.placares_processados
+
+        
 
         placares_validos = []
         invalidos = 0
