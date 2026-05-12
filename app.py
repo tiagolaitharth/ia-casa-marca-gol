@@ -7,7 +7,6 @@ import re
 usuarios = st.secrets["usuarios"]
 
 
-
 st.set_page_config(layout="wide")
 
 st.title("📊 Sistema IA")
@@ -433,9 +432,180 @@ with tab2:
         resumo['Erros_0x1'] / resumo['Jogos'] * 100
     ).round(2)
 
-    resumo = resumo.sort_values(by='Jogos', ascending=False)
+    resumo = resumo.sort_values(
+        by='Jogos',
+        ascending=False
+    )
 
-    st.dataframe(resumo, use_container_width=True)
+    st.dataframe(
+        resumo,
+        use_container_width=True
+    )
+
+    liga_selecionada = st.selectbox(
+        "Selecionar Liga",
+        options=resumo['Liga']
+    )
+
+    df_detalhe = df[
+        (df['Liga'] == liga_selecionada) &
+        (df['Placar'] != "🔮")
+    ].copy()
+
+    colunas_liga = [
+        'Data_str',
+        'Time Casa',
+        'Time Visitante',
+        'Placar',
+        'Resultado'
+    ]
+
+    st.subheader(
+        f"📊 Todos os jogos da liga: {liga_selecionada}"
+    )
+
+    st.dataframe(
+        df_detalhe[colunas_liga].sort_values(
+            by='Data_str',
+            ascending=False
+        ),
+        use_container_width=True
+    )
+
+    # =========================
+    # PROCESSAR PLACARES DA LIGA
+    # =========================
+
+    if st.button("⚽ Processar Placares da Liga"):
+
+        placares_processados = df_detalhe[
+            'Placar'
+        ].dropna().tolist()
+
+        st.session_state.placares_processados = (
+            placares_processados
+        )
+
+        st.success(
+            "Placares da liga processados. Vá para a aba Placares."
+        )
+
+    # =========================
+    # JOGOS 0X1
+    # =========================
+
+    df_0x1 = df_detalhe[
+        df_detalhe['Placar'] == "0 x 1"
+    ]
+
+    st.subheader("❌ Jogos que terminaram 0 x 1")
+
+    if len(df_0x1) > 0:
+
+        st.dataframe(
+            df_0x1[colunas_liga].sort_values(
+                by='Data_str',
+                ascending=False
+            ),
+            use_container_width=True
+        )
+
+    else:
+        st.info("Nenhum jogo 0x1 nessa liga 👍")
+
+# =========================
+# ESTATÍSTICAS DOS TIMES
+# =========================
+
+vitorias_casa = {}
+empates = {}
+vitorias_fora = {}
+
+for _, row in df_detalhe.iterrows():
+
+    try:
+
+        casa = row['Time Casa']
+        fora = row['Time Visitante']
+
+        gols_casa = int(
+            row['Placar'].split('x')[0].strip()
+        )
+
+        gols_fora = int(
+            row['Placar'].split('x')[1].strip()
+        )
+
+        if gols_casa > gols_fora:
+
+            vitorias_casa[casa] = (
+                vitorias_casa.get(casa, 0) + 1
+            )
+
+        elif gols_casa < gols_fora:
+
+            vitorias_fora[fora] = (
+                vitorias_fora.get(fora, 0) + 1
+            )
+
+        else:
+
+            empates[casa] = (
+                empates.get(casa, 0) + 1
+            )
+
+            empates[fora] = (
+                empates.get(fora, 0) + 1
+            )
+
+    except:
+        pass
+
+top_casa = sorted(
+    vitorias_casa.items(),
+    key=lambda x: x[1],
+    reverse=True
+)[:10]
+
+top_empates = sorted(
+    empates.items(),
+    key=lambda x: x[1],
+    reverse=True
+)[:10]
+
+top_fora = sorted(
+    vitorias_fora.items(),
+    key=lambda x: x[1],
+    reverse=True
+)[:10]
+
+st.subheader("📈 Estatísticas dos Times")
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+
+    st.markdown("### 🏠 Mais Vitórias em Casa")
+
+    for time, qtd in top_casa:
+
+        st.write(f"{time} → {qtd}")
+
+with c2:
+
+    st.markdown("### 🤝 Mais Empates")
+
+    for time, qtd in top_empates:
+
+        st.write(f"{time} → {qtd}")
+
+with c3:
+
+    st.markdown("### 🚗 Mais Vitórias Fora")
+
+    for time, qtd in top_fora:
+
+        st.write(f"{time} → {qtd}")
 
 # =========================
 # ABA 3 - PLACARES
