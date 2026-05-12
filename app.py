@@ -139,8 +139,11 @@ with tab1:
     if "busca_visit" not in st.session_state:
         st.session_state.busca_visit = ""
 
-    if "busca_data" not in st.session_state:
-        st.session_state.busca_data = ""
+    if "data_inicial" not in st.session_state:
+        st.session_state.data_inicial = ""
+
+    if "data_final" not in st.session_state:
+        st.session_state.data_final = ""
 
     def update_from_slider():
 
@@ -170,7 +173,8 @@ with tab1:
 
         st.session_state.busca_casa = ""
         st.session_state.busca_visit = ""
-        st.session_state.busca_data = ""
+        st.session_state.data_inicial = ""
+        st.session_state.data_final = ""
 
     st.sidebar.header("Filtros")
 
@@ -272,17 +276,23 @@ with tab1:
 
     st.subheader("🔎 Filtros da tabela")
 
-    c1, c2, c3, c4 = st.columns([1,1,1,1])
-
+    c1, c2, c3, c4, c5 = st.columns([1,1,1,1,1])
     c1.text_input("Time Casa", key="busca_casa")
     c2.text_input("Time Visitante", key="busca_visit")
-    c3.text_input("Data", key="busca_data")
+    c3.text_input(
+    "Data Inicial",
+    key="data_inicial"
+)
+
+    c4.text_input(
+    "Data Final",
+    key="data_final"
+)
 
     c4.button(
         "🔄 Limpar",
         on_click=limpar_filtros
     )
-
     def aplicar(df):
 
         if st.session_state.busca_casa:
@@ -301,16 +311,34 @@ with tab1:
                 )
             ]
 
-        if st.session_state.busca_data:
+        if (
+            st.session_state.data_inicial and
+            st.session_state.data_final
+        ):
 
-            df = df[
-                df['Data_str'].str.contains(
-                    st.session_state.busca_data
+            try:
+
+                data_ini = pd.to_datetime(
+                    st.session_state.data_inicial,
+                    dayfirst=True
                 )
-            ]
+
+                data_fim = pd.to_datetime(
+                    st.session_state.data_final,
+                    dayfirst=True
+                )
+
+                df = df[
+                    (df['Data'] >= data_ini) &
+                    (df['Data'] <= data_fim)
+                ]
+
+            except:
+                pass
 
         return df
 
+    
     df_filtrado = aplicar(df_filtrado)
 
     # =========================
@@ -517,95 +545,156 @@ with tab2:
 # ESTATÍSTICAS DOS TIMES
 # =========================
 
-vitorias_casa = {}
-empates = {}
-vitorias_fora = {}
+    # =========================
+# ESTATÍSTICAS DOS TIMES
+# =========================
 
-for _, row in df_detalhe.iterrows():
+    vitorias_casa = {}
+    derrotas_casa = {}
 
-    try:
+    vitorias_fora = {}
+    derrotas_fora = {}
 
-        casa = row['Time Casa']
-        fora = row['Time Visitante']
+    empates_casa = {}
+    empates_fora = {}
 
-        gols_casa = int(
-            row['Placar'].split('x')[0].strip()
-        )
+    for _, row in df_detalhe.iterrows():
 
-        gols_fora = int(
-            row['Placar'].split('x')[1].strip()
-        )
+        try:
 
-        if gols_casa > gols_fora:
+            casa = row['Time Casa']
+            fora = row['Time Visitante']
 
-            vitorias_casa[casa] = (
-                vitorias_casa.get(casa, 0) + 1
+            gols_casa = int(
+                row['Placar'].split('x')[0].strip()
             )
 
-        elif gols_casa < gols_fora:
-
-            vitorias_fora[fora] = (
-                vitorias_fora.get(fora, 0) + 1
+            gols_fora = int(
+                row['Placar'].split('x')[1].strip()
             )
 
-        else:
+            # VITÓRIA CASA
 
-            empates[casa] = (
-                empates.get(casa, 0) + 1
-            )
+            if gols_casa > gols_fora:
 
-            empates[fora] = (
-                empates.get(fora, 0) + 1
-            )
+                vitorias_casa[casa] = (
+                    vitorias_casa.get(casa, 0) + 1
+                )
 
-    except:
-        pass
+                derrotas_fora[fora] = (
+                    derrotas_fora.get(fora, 0) + 1
+                )
 
-top_casa = sorted(
-    vitorias_casa.items(),
-    key=lambda x: x[1],
-    reverse=True
-)[:10]
+            # VITÓRIA FORA
 
-top_empates = sorted(
-    empates.items(),
-    key=lambda x: x[1],
-    reverse=True
-)[:10]
+            elif gols_casa < gols_fora:
 
-top_fora = sorted(
-    vitorias_fora.items(),
-    key=lambda x: x[1],
-    reverse=True
-)[:10]
+                vitorias_fora[fora] = (
+                    vitorias_fora.get(fora, 0) + 1
+                )
 
-st.subheader("📈 Estatísticas dos Times")
+                derrotas_casa[casa] = (
+                    derrotas_casa.get(casa, 0) + 1
+                )
 
-c1, c2, c3 = st.columns(3)
+            # EMPATE
 
-with c1:
+            else:
 
-    st.markdown("### 🏠 Mais Vitórias em Casa")
+                empates_casa[casa] = (
+                    empates_casa.get(casa, 0) + 1
+                )
 
-    for time, qtd in top_casa:
+                empates_fora[fora] = (
+                    empates_fora.get(fora, 0) + 1
+                )
 
-        st.write(f"{time} → {qtd}")
+        except:
+            pass
 
-with c2:
+    top_vitorias_casa = sorted(
+        vitorias_casa.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-    st.markdown("### 🤝 Mais Empates")
+    top_derrotas_casa = sorted(
+        derrotas_casa.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-    for time, qtd in top_empates:
+    top_empates_casa = sorted(
+        empates_casa.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-        st.write(f"{time} → {qtd}")
+    top_vitorias_fora = sorted(
+        vitorias_fora.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-with c3:
+    top_derrotas_fora = sorted(
+        derrotas_fora.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-    st.markdown("### 🚗 Mais Vitórias Fora")
+    top_empates_fora = sorted(
+        empates_fora.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
-    for time, qtd in top_fora:
+    st.subheader("📈 Estatísticas dos Times")
 
-        st.write(f"{time} → {qtd}")
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        st.markdown("## 🏠 CASA")
+
+        st.markdown("### ✅ Mais Vitórias")
+
+        for time, qtd in top_vitorias_casa:
+
+            st.write(f"{time} → {qtd}")
+
+        st.markdown("### ❌ Mais Derrotas")
+
+        for time, qtd in top_derrotas_casa:
+
+            st.write(f"{time} → {qtd}")
+
+        st.markdown("### 🤝 Mais Empates")
+
+        for time, qtd in top_empates_casa:
+
+            st.write(f"{time} → {qtd}")
+
+    with c2:
+
+        st.markdown("## 🚗 FORA")
+
+        st.markdown("### ✅ Mais Vitórias")
+
+        for time, qtd in top_vitorias_fora:
+
+            st.write(f"{time} → {qtd}")
+
+        st.markdown("### ❌ Mais Derrotas")
+
+        for time, qtd in top_derrotas_fora:
+
+            st.write(f"{time} → {qtd}")
+
+        st.markdown("### 🤝 Mais Empates")
+
+        for time, qtd in top_empates_fora:
+
+            st.write(f"{time} → {qtd}")
 
 # =========================
 # ABA 3 - PLACARES
