@@ -433,43 +433,71 @@ with tab1:
 
         status_1x0 = ""
 
-        # =========================
-        # ELITE GLOBAL
-        # =========================
+    # =========================
+    # ELITE GLOBAL
+    # =========================
 
-        if lay_0x1 >= 99:
+    if lay_0x1 >= 99:
 
-            status_0x1 = "🔥 ELITE 0x1"
+        status_0x1 = "🔥 ELITE 0x1"
 
-        if lay_1x0 >= 99:
+    if lay_1x0 >= 99:
 
-            status_1x0 = "🔥 ELITE 1x0"
+        status_1x0 = "🔥 ELITE 1x0"
 
-        # =========================
-        # FAIXA 93-100
-        # =========================
+    # =========================
+    # TOP / BOM / MÉDIO 0x1
+    # =========================
 
-        if prob >= 93:
+    if not status_0x1:
 
-            if not status_0x1:
+        # TOP
+        if prob >= 90 and prob <= 92:
 
-                if lay_0x1 >= 96:
+            if lay_0x1 >= 96:
 
-                    status_0x1 = "🚀 TOP 0x1"
+                status_0x1 = "🚀 TOP 0x1"
 
-                elif lay_0x1 >= 91:
+        # BOM
+        elif prob >= 85 and prob < 90:
 
-                    status_0x1 = "✅ BOM 0x1"
+            if lay_0x1 >= 94:
 
-            if not status_1x0:
+                status_0x1 = "✅ BOM 0x1"
 
-                if lay_1x0 >= 96:
+        # MÉDIO
+        elif prob >= 80 and prob < 85:
 
-                    status_1x0 = "🚀 TOP 1x0"
+            if lay_0x1 >= 90:
 
-                elif lay_1x0 >= 91:
+                status_0x1 = "⚠️ MÉDIO 0x1"
 
-                    status_1x0 = "✅ BOM 1x0"
+    # =========================
+    # TOP / BOM / MÉDIO 1x0
+    # =========================
+
+    if not status_1x0:
+
+        # TOP
+        if prob >= 1 and prob <= 50:
+
+            if lay_1x0 >= 96:
+
+                status_1x0 = "🚀 TOP 1x0"
+
+        # BOM
+        elif prob > 50 and prob <= 70:
+
+            if lay_1x0 >= 94:
+
+                status_1x0 = "✅ BOM 1x0"
+
+        # MÉDIO
+        elif prob > 70 and prob <= 85:
+
+            if lay_1x0 >= 90:
+
+                status_1x0 = "⚠️ MÉDIO 1x0"
 
         # =========================
         # FAIXA 90-92.99
