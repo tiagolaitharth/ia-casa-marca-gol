@@ -347,49 +347,85 @@ with tab1:
 
         jogo_id = f"{casa}_{fora}"
 
-        min_range = int(prob)
+        # =========================
+        # RANGE 0x1
+        # =========================
 
-        max_range = 100
+        min_range_0x1 = int(prob)
 
-        df_range = df[
+        max_range_0x1 = 100
 
-            (df['Probabilidade (%)'] >= min_range) &
+        df_range_0x1 = df[
 
-            (df['Probabilidade (%)'] <= max_range) &
+            (df['Probabilidade (%)'] >= min_range_0x1) &
+
+            (df['Probabilidade (%)'] <= max_range_0x1) &
 
             (df['Placar'] != "🔮")
 
         ].copy()
 
-        total_jogos = len(df_range)
+        # =========================
+        # RANGE 1x0
+        # =========================
+
+        min_range_1x0 = 0
+
+        max_range_1x0 = int(prob)
+
+        df_range_1x0 = df[
+
+            (df['Probabilidade (%)'] >= min_range_1x0) &
+
+            (df['Probabilidade (%)'] <= max_range_1x0) &
+
+            (df['Placar'] != "🔮")
+
+        ].copy()
+
+        # =========================
+        # 0x1
+        # =========================
+
+        total_jogos_0x1 = len(
+            df_range_0x1
+        )
 
         total_0x1 = len(
 
-            df_range[
-                df_range['Placar'] == "0 x 1"
-            ]
-        )
-
-        total_1x0 = len(
-
-            df_range[
-                df_range['Placar'] == "1 x 0"
+            df_range_0x1[
+                df_range_0x1['Placar'] == "0 x 1"
             ]
         )
 
         pct_0x1 = (
 
-            total_0x1 / total_jogos * 100
+            total_0x1 / total_jogos_0x1 * 100
 
-        ) if total_jogos > 0 else 0
+        ) if total_jogos_0x1 > 0 else 0
+
+        lay_0x1 = 100 - pct_0x1
+
+        # =========================
+        # 1x0
+        # =========================
+
+        total_jogos_1x0 = len(
+            df_range_1x0
+        )
+
+        total_1x0 = len(
+
+            df_range_1x0[
+                df_range_1x0['Placar'] == "1 x 0"
+            ]
+        )
 
         pct_1x0 = (
 
-            total_1x0 / total_jogos * 100
+            total_1x0 / total_jogos_1x0 * 100
 
-        ) if total_jogos > 0 else 0
-
-        lay_0x1 = 100 - pct_0x1
+        ) if total_jogos_1x0 > 0 else 0
 
         lay_1x0 = 100 - pct_1x0
 
@@ -730,6 +766,18 @@ with tab2:
 
         st.session_state.manual_max = 100
 
+        st.session_state.manual_casa = ""
+
+        st.session_state.manual_fora = ""
+
+        st.session_state.manual_data_inicio = (
+            df['Data'].min().date()
+        )
+
+        st.session_state.manual_data_final = (
+            df['Data'].max().date()
+        )
+
     # =========================
     # FILTROS
     # =========================
@@ -799,10 +847,16 @@ with tab2:
         )
 
     # =========================
+    # HOJE
+    # =========================
+
+    hoje = datetime.today().date()
+
+    # =========================
     # BOTÕES
     # =========================
 
-    b1, b2 = st.columns(2)
+    b1, b2, b3 = st.columns(3)
 
     with b1:
 
@@ -820,6 +874,20 @@ with tab2:
             key="manual_limpar",
             on_click=limpar_range_manual
         )
+
+    with b3:
+
+        hoje_btn = st.button(
+            "📅 Jogos de Hoje",
+            use_container_width=True,
+            key="manual_hoje"
+        )
+
+    if hoje_btn:
+
+        data_inicio = hoje
+
+        data_final = hoje
 
     st.divider()
     
@@ -966,10 +1034,23 @@ with tab2:
         )
 
     # =========================
+    # TABELA
+    # =========================
+
+    # =========================
     # RESULTADO VISUAL
     # =========================
 
-    df_manual['Green/Red'] = df_manual['Resultado']
+    df_manual['Green/Red'] = df_manual['Placar'].apply(
+
+        lambda x:
+
+        "🟢 V"
+
+        if x != "0 x 1"
+
+        else "🔴 X"
+    )
 
     # =========================
     # TABELA
