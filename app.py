@@ -580,8 +580,12 @@ with tab1:
                     st.rerun()
 
                 st.write(
-                    f"📚 {total_jogos} jogos analisados"
+                    f"📚 {total_jogos_0x1} jogos analisados 0x1"
                 )
+
+                st.write(
+                    f"📚 {total_jogos_1x0} jogos analisados 1x0"
+)
 
                 st.write(
                     f"0x1 → {total_0x1} vezes ({pct_0x1:.2f}%)"
