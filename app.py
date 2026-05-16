@@ -998,7 +998,7 @@ with tab2:
             'Time Casa',
             'Time Visitante',
             'Placar',
-            'Check',
+            'Green/Red',
             'Probabilidade (%)'
         ]],
 
