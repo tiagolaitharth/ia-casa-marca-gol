@@ -708,6 +708,32 @@ with tab2:
     # FILTROS
     # =========================
 
+    # =========================
+    # SESSION RANGE
+    # =========================
+
+    if "manual_min" not in st.session_state:
+
+        st.session_state.manual_min = 0
+
+    if "manual_max" not in st.session_state:
+
+        st.session_state.manual_max = 100
+
+    # =========================
+    # LIMPAR
+    # =========================
+
+    def limpar_range_manual():
+
+        st.session_state.manual_min = 0
+
+        st.session_state.manual_max = 100
+
+    # =========================
+    # FILTROS
+    # =========================
+
     c1, c2 = st.columns(2)
 
     with c1:
@@ -758,9 +784,8 @@ with tab2:
 
         min_range = st.number_input(
             "Range mínimo (%)",
-            min_value=0,
-            max_value=100,
-            value=0,
+            0,
+            100,
             key="manual_min"
         )
 
@@ -768,9 +793,8 @@ with tab2:
 
         max_range = st.number_input(
             "Range máximo (%)",
-            min_value=0,
-            max_value=100,
-            value=100,
+            0,
+            100,
             key="manual_max"
         )
 
@@ -793,16 +817,12 @@ with tab2:
         limpar = st.button(
             "🧹 Limpar Filtros",
             use_container_width=True,
-            key="manual_limpar"
+            key="manual_limpar",
+            on_click=limpar_range_manual
         )
+
+    st.divider()
     
-    if limpar:
-
-        del st.session_state["manual_min"]
-
-        del st.session_state["manual_max"]
-
-        st.rerun()
 
     # =========================
     # BASE
@@ -949,6 +969,25 @@ with tab2:
     # TABELA
     # =========================
 
+    # =========================
+    # RESULTADO VISUAL
+    # =========================
+
+    df_manual['Green/Red'] = df_manual['Placar'].apply(
+
+        lambda x:
+
+        "🟢 V"
+
+        if x != "0 x 1"
+
+        else "🔴 X"
+    )
+
+    # =========================
+    # TABELA
+    # =========================
+
     st.dataframe(
 
         df_manual[[
@@ -958,8 +997,9 @@ with tab2:
             'Hora',
             'Time Casa',
             'Time Visitante',
-            'Probabilidade (%)',
-            'Placar'
+            'Placar',
+            'Check',
+            'Probabilidade (%)'
         ]],
 
         use_container_width=True,
