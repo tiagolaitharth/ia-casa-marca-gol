@@ -1,63 +1,101 @@
 import streamlit as st
 import pandas as pd
 import os
+import uuid
+import re
+
 from datetime import datetime
 from collections import Counter
-import re
 usuarios = st.secrets["usuarios"]
 
+# =========================
+# CONFIG
+# =========================
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    layout="wide",
+    page_title="IA - Análise Completa"
+)
 
-st.title("📊 Sistema IA")
+st.title("📊 IA - Análise Completa")
 
 # =========================
 # LOGIN
 # =========================
 
 if "logado" not in st.session_state:
+
     st.session_state.logado = False
 
 if not st.session_state.logado:
 
     st.subheader("🔐 Login")
 
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
+    usuario = st.text_input(
+        "Usuário",
+        key="login_usuario"
+    )
 
-    if st.button("Entrar"):
+    senha = st.text_input(
+        "Senha",
+        type="password",
+        key="login_senha"
+    )
+
+    if st.button(
+        "Entrar",
+        key="login_btn"
+    ):
 
         if usuario in usuarios:
 
-            dados_usuario = usuarios[usuario]
+            dados_usuario = usuarios[
+                usuario
+            ]
 
-            senha_correta = dados_usuario["senha"]
+            senha_correta = (
+                dados_usuario["senha"]
+            )
 
             data_expiracao = datetime.strptime(
+
                 dados_usuario["expira"],
+
                 "%Y-%m-%d"
+
             ).date()
 
-            hoje = datetime.today().date()
+            hoje = (
+                datetime.today().date()
+            )
 
             if senha == senha_correta:
 
                 if hoje <= data_expiracao:
 
                     st.session_state.logado = True
+
                     st.session_state.usuario = usuario
-                    st.session_state.tipo = dados_usuario["tipo"]
 
                     st.rerun()
 
                 else:
-                    st.error("Acesso expirado")
+
+                    st.error(
+                        "Acesso expirado"
+                    )
 
             else:
-                st.error("Senha incorreta")
+
+                st.error(
+                    "Senha incorreta"
+                )
 
         else:
-            st.error("Usuário não encontrado")
+
+            st.error(
+                "Usuário não encontrado"
+            )
 
     st.stop()
 
@@ -65,489 +103,1370 @@ if not st.session_state.logado:
 # VERIFICAÇÃO
 # =========================
 
-if not os.path.exists("resultado_modelo.xlsx"):
-    st.error("Arquivo não encontrado. Rode primeiro o modelo.py")
+if not os.path.exists(
+    "resultado_modelo.xlsx"
+):
+
+    st.error(
+        "Arquivo resultado_modelo.xlsx não encontrado"
+    )
+
     st.stop()
 
-df = pd.read_excel("resultado_modelo.xlsx")
-
 # =========================
-# TRATAMENTO
+# LEITURA
 # =========================
 
-df['Data'] = pd.to_datetime(df['Data'])
-df['Data_str'] = df['Data'].dt.strftime('%d/%m/%Y')
-df['Hora'] = df['Hora'].astype(str).str.slice(0,5)
+df = pd.read_excel(
+    "resultado_modelo.xlsx"
+)
 
-df['Placar'] = df['Placar'].astype(str).str.strip()
-df['Placar'] = df['Placar'].replace("-", "🔮")
+
+# =========================
+# DATA
+# =========================
+
+df['Data'] = pd.to_datetime(
+
+    df['Data'],
+
+    dayfirst=True,
+
+    errors='coerce'
+)
+
+df['Data_str'] = (
+
+    df['Data']
+    .dt.strftime('%d/%m/%Y')
+)
+
+# =========================
+# HORA
+# =========================
+
+df['Hora'] = (
+
+    df['Hora']
+    .astype(str)
+    .str.slice(0, 5)
+)
+
+# =========================
+# PLACAR
+# =========================
+
+df['Placar'] = (
+
+    df['Placar']
+    .astype(str)
+    .str.strip()
+)
+
+df['Placar'] = (
+
+    df['Placar']
+    .replace("-", "🔮")
+)
+
+# =========================
+# PROBABILIDADE
+# =========================
 
 df['Probabilidade (%)'] = (
-    df['Probabilidade'] * 100
+
+    df['Probabilidade']
+    .astype(float)
+    * 100
+
 ).round(2)
 
 # =========================
-# RESULTADO VISUAL
+# NORMALIZAR
+# =========================
+
+def normalizar_placar(placar):
+
+    placar = (
+        str(placar)
+        .strip()
+        .lower()
+    )
+
+    if not placar:
+
+        return None
+
+    m = re.match(
+
+        r"^\s*(\d+)\D+(\d+)\s*$",
+
+        placar
+    )
+
+    if not m:
+
+        return None
+
+    a, b = m.groups()
+
+    return f"{int(a)} x {int(b)}"
+
+# =========================
+# RESULTADO
 # =========================
 
 def resultado_flag(placar):
 
     if placar == "🔮":
+
         return "🔮"
 
     try:
 
         gols = int(
-            placar.split('x')[0].strip()
+
+            placar
+            .split('x')[0]
+            .strip()
         )
 
-        return "🟢 V" if gols > 0 else "🔴 X"
+        return (
+            "🟢 V"
+            if gols > 0
+            else "🔴 X"
+        )
 
     except:
+
         return ""
 
-df['Resultado'] = df['Placar'].apply(resultado_flag)
+df['Resultado'] = (
+
+    df['Placar']
+    .apply(resultado_flag)
+)
 
 # =========================
 # ABAS
 # =========================
 
-tab1, tab2, tab3 = st.tabs([
-    "📊 Análise Geral",
-    "🏆 Ligas",
-    "⚽ Placares"
-])
+tab1, tab2, tab3, tab4 = st.tabs([
 
-# =========================
-# ABA 1
-# =========================
+    "⚽ Jogos do Dia",
+
+    "🧠 Análise Manual",
+
+    "⚽ Placares Processados",
+
+    "🏆 Ligas"
+])
 
 with tab1:
 
-    if "min_prob" not in st.session_state:
-        st.session_state.min_prob = 0
+    st.subheader("📅 Jogos do Dia")
 
-    if "max_prob" not in st.session_state:
-        st.session_state.max_prob = 100
+    if "analise_jogo" not in st.session_state:
 
-    if "slider_range" not in st.session_state:
-        st.session_state.slider_range = (0, 100)
+        st.session_state.analise_jogo = None
 
-    if "busca_casa" not in st.session_state:
-        st.session_state.busca_casa = ""
+    busca_time = st.text_input(
+        "🔎 Buscar Time",
+        key="tab1_busca"
+    )
 
-    if "busca_visit" not in st.session_state:
-        st.session_state.busca_visit = ""
+    filtro_oportunidade = st.selectbox(
 
-    if "data_inicial" not in st.session_state:
-        st.session_state.data_inicial = ""
+        "🎯 Filtrar Oportunidades",
 
-    if "data_final" not in st.session_state:
-        st.session_state.data_final = ""
+        [
 
-    def update_from_slider():
+            "Todos",
 
-        st.session_state.min_prob = (
-            st.session_state.slider_range[0]
+            "🔥 ELITE 0x1",
+            "🔥 ELITE 1x0",
+
+            "🚀 TOP 0x1",
+            "🚀 TOP 1x0",
+
+            "✅ BOM 0x1",
+            "✅ BOM 1x0",
+
+            "⚠️ MÉDIO 0x1",
+            "⚠️ MÉDIO 1x0"
+        ],
+
+        key="tab1_filtro"
+    )
+
+    df_jogos = df[
+        df['Placar'] == "🔮"
+    ].copy()
+
+    if busca_time:
+
+        df_jogos = df_jogos[
+
+            df_jogos['Time Casa']
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                busca_time.lower(),
+                na=False
+            )
+
+            |
+
+            df_jogos['Time Visitante']
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                busca_time.lower(),
+                na=False
+            )
+        ]
+
+    df_jogos = df_jogos.sort_values(
+
+        by='Probabilidade (%)',
+
+        ascending=False
+    )
+
+    for _, row in df_jogos.iterrows():
+
+        liga = row['Liga']
+
+        casa = row['Time Casa']
+
+        fora = row['Time Visitante']
+
+        prob = row['Probabilidade (%)']
+
+        hora = row['Hora']
+
+        jogo_id = f"{casa}_{fora}"
+
+        min_range = int(prob)
+
+        max_range = 100
+
+        df_range = df[
+
+            (df['Probabilidade (%)'] >= min_range) &
+
+            (df['Probabilidade (%)'] <= max_range) &
+
+            (df['Placar'] != "🔮")
+
+        ].copy()
+
+        total_jogos = len(df_range)
+
+        total_0x1 = len(
+
+            df_range[
+                df_range['Placar'] == "0 x 1"
+            ]
         )
 
-        st.session_state.max_prob = (
-            st.session_state.slider_range[1]
+        total_1x0 = len(
+
+            df_range[
+                df_range['Placar'] == "1 x 0"
+            ]
         )
 
-    def update_from_input():
+        pct_0x1 = (
 
-        st.session_state.slider_range = (
-            st.session_state.min_prob,
-            st.session_state.max_prob
-        )
+            total_0x1 / total_jogos * 100
 
-    def limpar_range():
+        ) if total_jogos > 0 else 0
 
-        st.session_state.slider_range = (0, 100)
+        pct_1x0 = (
 
-        st.session_state.min_prob = 0
-        st.session_state.max_prob = 100
+            total_1x0 / total_jogos * 100
 
-    def limpar_filtros():
+        ) if total_jogos > 0 else 0
 
-        st.session_state.busca_casa = ""
-        st.session_state.busca_visit = ""
-        st.session_state.data_inicial = ""
-        st.session_state.data_final = ""
+        lay_0x1 = 100 - pct_0x1
 
-    st.sidebar.header("Filtros")
+        lay_1x0 = 100 - pct_1x0
 
-    st.sidebar.slider(
-        "Probabilidade (%)",
-        0,
-        100,
-        st.session_state.slider_range,
-        key="slider_range",
-        on_change=update_from_slider
-    )
+        status_0x1 = ""
 
-    st.sidebar.number_input(
-        "Min",
-        0,
-        100,
-        key="min_prob",
-        on_change=update_from_input
-    )
+        status_1x0 = ""
 
-    st.sidebar.number_input(
-        "Max",
-        0,
-        100,
-        key="max_prob",
-        on_change=update_from_input
-    )
+        # =========================
+        # ELITE GLOBAL
+        # =========================
 
-    st.sidebar.button(
-        "🔄 Limpar Range",
-        on_click=limpar_range
-    )
+        if lay_0x1 >= 99:
 
-    threshold_min = st.session_state.min_prob
-    threshold_max = st.session_state.max_prob
+            status_0x1 = "🔥 ELITE 0x1"
 
-    st.sidebar.subheader("Filtros Avançados")
+        if lay_1x0 >= 99:
 
-    todos_times = sorted(
-        set(df['Time Casa']).union(
-            set(df['Time Visitante'])
-        )
-    )
+            status_1x0 = "🔥 ELITE 1x0"
 
-    times_sidebar = st.sidebar.multiselect(
-        "Times",
-        options=todos_times
-    )
+        # =========================
+        # FAIXA 93-100
+        # =========================
 
-    todas_ligas = sorted(
-        df['Liga'].dropna().unique()
-    )
+        if prob >= 93:
 
-    ligas_sidebar = st.sidebar.multiselect(
-        "Ligas",
-        options=todas_ligas
-    )
+            if not status_0x1:
 
-    placares = sorted(
-        df['Placar'].dropna().unique()
-    )
+                if lay_0x1 >= 96:
 
-    placar_sidebar = st.sidebar.multiselect(
-        "Placar",
-        options=placares
-    )
+                    status_0x1 = "🚀 TOP 0x1"
+
+                elif lay_0x1 >= 91:
+
+                    status_0x1 = "✅ BOM 0x1"
+
+            if not status_1x0:
+
+                if lay_1x0 >= 96:
+
+                    status_1x0 = "🚀 TOP 1x0"
+
+                elif lay_1x0 >= 91:
+
+                    status_1x0 = "✅ BOM 1x0"
+
+        # =========================
+        # FAIXA 90-92.99
+        # =========================
+
+        elif prob >= 90:
+
+            if not status_0x1:
+
+                if lay_0x1 >= 98:
+
+                    status_0x1 = "🚀 TOP 0x1"
+
+                elif lay_0x1 >= 95:
+
+                    status_0x1 = "✅ BOM 0x1"
+
+                elif lay_0x1 >= 91:
+
+                    status_0x1 = "⚠️ MÉDIO 0x1"
+
+            if not status_1x0:
+
+                if lay_1x0 >= 98:
+
+                    status_1x0 = "🚀 TOP 1x0"
+
+                elif lay_1x0 >= 95:
+
+                    status_1x0 = "✅ BOM 1x0"
+
+                elif lay_1x0 >= 91:
+
+                    status_1x0 = "⚠️ MÉDIO 1x0"
+
+        # =========================
+        # FILTRO
+        # =========================
+
+        mostrar = False
+
+        if filtro_oportunidade == "Todos":
+
+            mostrar = True
+
+        elif filtro_oportunidade == status_0x1:
+
+            mostrar = True
+
+        elif filtro_oportunidade == status_1x0:
+
+            mostrar = True
+
+        if not mostrar:
+
+            continue
+
+        # =========================
+        # CARD
+        # =========================
+
+        with st.container(border=True):
+
+            st.markdown(
+                f"### ⚽ {casa} x {fora}"
+            )
+
+            st.write(
+                f"🏆 {liga}"
+            )
+
+            st.write(
+                f"🕒 {hora}"
+            )
+
+            st.write(
+                f"📊 {prob:.2f}%"
+            )
+
+            if status_0x1:
+
+                st.success(status_0x1)
+
+            if status_1x0:
+
+                st.success(status_1x0)
+
+            if st.button(
+
+                "🔍 Análise Completa",
+
+                key=jogo_id
+            ):
+
+                st.session_state.analise_jogo = jogo_id
+
+            if st.session_state.analise_jogo == jogo_id:
+
+                st.divider()
+
+                st.subheader(
+                    "📊 Análise Completa"
+                )
+
+                if st.button(
+
+                    "❌ Fechar Análise",
+
+                    key=f"fechar_{jogo_id}"
+                ):
+
+                    st.session_state.analise_jogo = None
+
+                    st.rerun()
+
+                st.write(
+                    f"📚 {total_jogos} jogos analisados"
+                )
+
+                st.write(
+                    f"0x1 → {total_0x1} vezes ({pct_0x1:.2f}%)"
+                )
+
+                st.write(
+                    f"1x0 → {total_1x0} vezes ({pct_1x0:.2f}%)"
+                )
+
+                        # =========================
+                # PREVISÃO
+                # =========================
+
+                def extrair_gols(
+                    lista,
+                    lado
+                ):
+
+                    gols = []
+
+                    for linha in lista:
+
+                        p = normalizar_placar(
+                            linha
+                        )
+
+                        if p:
+
+                            a, b = map(
+
+                                int,
+
+                                p.split(" x ")
+                            )
+
+                            if lado == "casa":
+
+                                gols.append(a)
+
+                            else:
+
+                                gols.append(b)
+
+                    return gols
+
+                lista_casa = df[
+
+                    (df['Time Casa'] == casa) &
+
+                    (df['Placar'] != "🔮")
+
+                ]['Placar'].tolist()
+
+                lista_fora = df[
+
+                    (df['Time Visitante'] == fora) &
+
+                    (df['Placar'] != "🔮")
+
+                ]['Placar'].tolist()
+
+                gols_casa = extrair_gols(
+                    lista_casa,
+                    "casa"
+                )
+
+                gols_fora = extrair_gols(
+                    lista_fora,
+                    "fora"
+                )
+
+                if gols_casa and gols_fora:
+
+                    freq_casa = Counter(
+                        gols_casa
+                    )
+
+                    freq_fora = Counter(
+                        gols_fora
+                    )
+
+                    total_casa = sum(
+                        freq_casa.values()
+                    )
+
+                    total_fora = sum(
+                        freq_fora.values()
+                    )
+
+                    prob_casa = {
+
+                        g: freq_casa[g] / total_casa
+
+                        for g in freq_casa
+                    }
+
+                    prob_fora = {
+
+                        g: freq_fora[g] / total_fora
+
+                        for g in freq_fora
+                    }
+
+                    resultados = []
+
+                    for g1 in prob_casa:
+
+                        for g2 in prob_fora:
+
+                            probabilidade = (
+
+                                prob_casa[g1] *
+
+                                prob_fora[g2]
+                            )
+
+                            resultados.append(
+
+                                (
+                                    f"{g1} x {g2}",
+                                    probabilidade
+                                )
+                            )
+
+                    resultados = sorted(
+
+                        resultados,
+
+                        key=lambda x: x[1],
+
+                        reverse=True
+                    )
+
+                    st.markdown(
+                        "### ⚽ Previsão de Placares"
+                    )
+
+                    for placar, probabilidade in resultados[:10]:
+
+                        st.write(
+                            f"{placar} → {probabilidade*100:.2f}%"
+                        )
+
+                    st.warning(
+
+                        "⚠️ Esses placares não são garantias de lucro. A previsão representa apenas tendências estatísticas do confronto."
+                    )
+
+with tab2:
+
+    st.subheader("🧠 Análise Manual")
 
     # =========================
-    # FILTRO BASE
+    # FILTROS
     # =========================
 
-    df_filtrado = df[
-        (df['Probabilidade'] >= threshold_min / 100) &
-        (df['Probabilidade'] <= threshold_max / 100)
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        filtro_casa = st.text_input(
+            "🏠 Time Casa",
+            key="manual_casa"
+        )
+
+    with c2:
+
+        filtro_fora = st.text_input(
+            "✈️ Time Fora",
+            key="manual_fora"
+        )
+
+    # =========================
+    # DATAS
+    # =========================
+
+    d1, d2 = st.columns(2)
+
+    with d1:
+
+        data_inicio = st.date_input(
+            "📅 Data Inicial",
+            value=df['Data'].min().date(),
+            format="DD/MM/YYYY",
+            key="manual_data_inicio"
+        )
+
+    with d2:
+
+        data_final = st.date_input(
+            "📅 Data Final",
+            value=df['Data'].max().date(),
+            format="DD/MM/YYYY",
+            key="manual_data_final"
+        )
+
+    # =========================
+    # RANGE
+    # =========================
+
+    r1, r2 = st.columns(2)
+
+    with r1:
+
+        min_range = st.number_input(
+            "Range mínimo (%)",
+            min_value=0,
+            max_value=100,
+            value=0,
+            key="manual_min"
+        )
+
+    with r2:
+
+        max_range = st.number_input(
+            "Range máximo (%)",
+            min_value=0,
+            max_value=100,
+            value=100,
+            key="manual_max"
+        )
+
+    # =========================
+    # BOTÕES
+    # =========================
+
+    b1, b2 = st.columns(2)
+
+    with b1:
+
+        aplicar = st.button(
+            "🔍 Aplicar Filtros",
+            use_container_width=True,
+            key="manual_aplicar"
+        )
+
+    with b2:
+
+        limpar = st.button(
+            "🧹 Limpar Filtros",
+            use_container_width=True,
+            key="manual_limpar"
+        )
+    
+    if limpar:
+
+        del st.session_state["manual_min"]
+
+        del st.session_state["manual_max"]
+
+        st.rerun()
+
+    # =========================
+    # BASE
+    # =========================
+
+    df_manual = df.copy()
+
+    # RANGE
+
+    df_manual = df_manual[
+
+        (df_manual['Probabilidade (%)'] >= min_range) &
+
+        (df_manual['Probabilidade (%)'] <= max_range)
     ]
 
-    if times_sidebar:
+    # CASA
 
-        df_filtrado = df_filtrado[
-            df_filtrado['Time Casa'].isin(times_sidebar) |
-            df_filtrado['Time Visitante'].isin(times_sidebar)
+    if filtro_casa:
+
+        df_manual = df_manual[
+
+            df_manual['Time Casa']
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                filtro_casa.lower(),
+                na=False
+            )
         ]
 
-    if ligas_sidebar:
+    # FORA
 
-        df_filtrado = df_filtrado[
-            df_filtrado['Liga'].isin(ligas_sidebar)
+    if filtro_fora:
+
+        df_manual = df_manual[
+
+            df_manual['Time Visitante']
+            .astype(str)
+            .str.lower()
+            .str.contains(
+                filtro_fora.lower(),
+                na=False
+            )
         ]
 
-    if placar_sidebar:
+    # DATAS
 
-        df_filtrado = df_filtrado[
-            df_filtrado['Placar'].isin(placar_sidebar)
-        ]
+    df_manual = df_manual[
 
-    # =========================
-    # FILTROS TABELA
-    # =========================
+        (df_manual['Data'].dt.date >= data_inicio) &
 
-    st.subheader("🔎 Filtros da tabela")
-
-    c1, c2, c3, c4, c5 = st.columns([1,1,1,1,1])
-    c1.text_input("Time Casa", key="busca_casa")
-    c2.text_input("Time Visitante", key="busca_visit")
-    c3.text_input(
-    "Data Inicial",
-    key="data_inicial"
-)
-
-    c4.text_input(
-    "Data Final",
-    key="data_final"
-)
-
-    c4.button(
-        "🔄 Limpar",
-        on_click=limpar_filtros
-    )
-    def aplicar(df):
-
-        if st.session_state.busca_casa:
-
-            df = df[
-                df['Time Casa'].str.lower().str.startswith(
-                    st.session_state.busca_casa.lower()
-                )
-            ]
-
-        if st.session_state.busca_visit:
-
-            df = df[
-                df['Time Visitante'].str.lower().str.startswith(
-                    st.session_state.busca_visit.lower()
-                )
-            ]
-
-        if (
-            st.session_state.data_inicial and
-            st.session_state.data_final
-        ):
-
-            try:
-
-                data_ini = pd.to_datetime(
-                    st.session_state.data_inicial,
-                    dayfirst=True
-                )
-
-                data_fim = pd.to_datetime(
-                    st.session_state.data_final,
-                    dayfirst=True
-                )
-
-                df = df[
-                    (df['Data'] >= data_ini) &
-                    (df['Data'] <= data_fim)
-                ]
-
-            except:
-                pass
-
-        return df
-
-    
-    df_filtrado = aplicar(df_filtrado)
+        (df_manual['Data'].dt.date <= data_final)
+    ]
 
     # =========================
     # MÉTRICAS
     # =========================
 
-    df_passado = df_filtrado[
-        df_filtrado['Placar'] != "🔮"
-    ]
+    total = len(df_manual)
 
-    df_0x1 = df_passado[
-        df_passado['Placar'] == "0 x 1"
-    ]
+    total_0x1 = len(
 
-    total = len(df_passado)
+        df_manual[
+            df_manual['Placar'] == "0 x 1"
+        ]
+    )
 
-    erros_0x1 = len(df_0x1)
+    total_1x0 = len(
 
-    taxa_0x1 = (
-        erros_0x1 / total * 100
+        df_manual[
+            df_manual['Placar'] == "1 x 0"
+        ]
+    )
+
+    pct_0x1 = (
+
+        total_0x1 / total * 100
+
     ) if total > 0 else 0
 
-    st.markdown("### 📊 Resultado do filtro atual")
+    pct_1x0 = (
 
-    col1, col2, col3 = st.columns(3)
+        total_1x0 / total * 100
 
-    col1.metric("Jogos no filtro", total)
-    col2.metric("0x1", erros_0x1)
-    col3.metric("Taxa 0x1", f"{taxa_0x1:.2f}%")
+    ) if total > 0 else 0
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+
+        st.metric(
+        "Jogos",
+        total
+    )
+
+    with m2:
+
+        st.metric(
+        "0x1",
+        total_0x1
+    )
+
+    with m3:
+
+        st.metric(
+        "Taxa 0x1",
+        f"{pct_0x1:.2f}%"
+    )
 
     # =========================
     # PROCESSAR PLACARES
     # =========================
 
-    col_btn_proc1, col_btn_proc2 = st.columns([1,4])
+    if st.button(
 
-    with col_btn_proc1:
+        "⚽ Processar Placares",
 
-        if st.button("⚽ Processar Placares"):
+        use_container_width=True,
 
-            placares_processados = df_filtrado[
-                df_filtrado['Placar'] != "🔮"
-            ]['Placar'].dropna().tolist()
+        key="manual_processar"
+    ):
 
-            st.session_state.placares_processados = placares_processados
+        placares_processados = [
 
-            st.success("Processados, vá para Placares")
+            normalizar_placar(p)
+
+            for p in df_manual['Placar']
+            .dropna()
+            .tolist()
+
+            if normalizar_placar(p)
+        ]
+
+        st.session_state[
+            "placares_processados"
+        ] = placares_processados
+
+        st.success(
+            "Placares processados"
+        )
 
     # =========================
-    # TABELA PRINCIPAL
+    # TABELA
     # =========================
-
-    colunas = [
-        'Liga',
-        'Data_str',
-        'Time Casa',
-        'Time Visitante',
-        'Placar',
-        'Resultado',
-        'Probabilidade (%)'
-    ]
 
     st.dataframe(
-        df_filtrado[colunas].sort_values(
-            by='Probabilidade (%)',
-            ascending=False
-        ),
-        use_container_width=True
+
+        df_manual[[
+
+            'Liga',
+            'Data_str',
+            'Hora',
+            'Time Casa',
+            'Time Visitante',
+            'Probabilidade (%)',
+            'Placar'
+        ]],
+
+        use_container_width=True,
+        hide_index=True
     )
 
-    # =========================
-    # JOGOS DE HOJE
-    # =========================
+with tab3:
 
-    df_futuro = df_filtrado[
-        df_filtrado['Placar'] == "🔮"
-    ]
+    st.subheader("⚽ Placares Processados")
 
-    st.subheader("📅 Jogos de Hoje")
+    if "placares_processados" not in st.session_state:
 
-    if len(df_futuro) > 0:
-
-        st.dataframe(
-            df_futuro[[
-                'Liga',
-                'Data_str',
-                'Hora',
-                'Time Casa',
-                'Time Visitante',
-                'Placar',
-                'Resultado',
-                'Probabilidade (%)'
-            ]].sort_values(
-                by='Probabilidade (%)',
-                ascending=False
-            ),
-            use_container_width=True
+        st.info(
+            "Nenhum placar processado"
         )
 
     else:
-        st.info("Nenhum jogo futuro")
 
-# =========================
-# ABA 2 - LIGAS
-# =========================
+        lista_placares = (
 
-with tab2:
+            st.session_state[
+                "placares_processados"
+            ]
+        )
 
-    st.subheader("🏆 Análise por Ligas")
+        # =========================
+        # NORMALIZA
+        # =========================
 
-    df_ligas = df[df['Placar'] != "🔮"].copy()
+        placares_validos = [
 
-    resumo = df_ligas.groupby('Liga').agg(
-        Jogos=('Liga', 'count'),
-        Erros_0x1=('Placar', lambda x: (x == "0 x 1").sum())
-    ).reset_index()
+            normalizar_placar(p)
 
-    resumo['Taxa_0x1 (%)'] = (
-        resumo['Erros_0x1'] / resumo['Jogos'] * 100
-    ).round(2)
+            for p in lista_placares
 
-    resumo = resumo.sort_values(
-        by='Jogos',
-        ascending=False
+            if normalizar_placar(p)
+        ]
+
+        # =========================
+        # SEPARAÇÃO
+        # =========================
+
+        casa = []
+        empate = []
+        fora = []
+
+        for placar in placares_validos:
+
+            try:
+
+                gols_casa = int(
+
+                    placar
+                    .split("x")[0]
+                    .strip()
+                )
+
+                gols_fora = int(
+
+                    placar
+                    .split("x")[1]
+                    .strip()
+                )
+
+                if gols_casa > gols_fora:
+
+                    casa.append(
+                        placar
+                    )
+
+                elif gols_casa == gols_fora:
+
+                    empate.append(
+                        placar
+                    )
+
+                else:
+
+                    fora.append(
+                        placar
+                    )
+
+            except:
+                pass
+
+        # =========================
+        # CONTAGEM
+        # =========================
+
+        total = len(
+            placares_validos
+        )
+
+        total_casa = len(casa)
+
+        total_empate = len(empate)
+
+        total_fora = len(fora)
+
+        pct_casa = (
+
+            total_casa / total * 100
+
+        ) if total > 0 else 0
+
+        pct_empate = (
+
+            total_empate / total * 100
+
+        ) if total > 0 else 0
+
+        pct_fora = (
+
+            total_fora / total * 100
+
+        ) if total > 0 else 0
+
+        # =========================
+        # MÉTRICAS
+        # =========================
+
+        m1, m2, m3 = st.columns(3)
+
+        with m1:
+
+            st.success(
+
+                f"""
+🏠 CASA
+
+{total_casa} jogos
+
+{pct_casa:.2f}%
+"""
+            )
+
+        with m2:
+
+            st.info(
+
+                f"""
+🤝 EMPATE
+
+{total_empate} jogos
+
+{pct_empate:.2f}%
+"""
+            )
+
+        with m3:
+
+            st.error(
+
+                f"""
+✈️ FORA
+
+{total_fora} jogos
+
+{pct_fora:.2f}%
+"""
+            )
+
+        # =========================
+        # COUNTER
+        # =========================
+
+        casa_count = Counter(casa)
+
+        empate_count = Counter(empate)
+
+        fora_count = Counter(fora)
+
+        casa_ordenado = sorted(
+
+            casa_count.items(),
+
+            key=lambda x: x[1],
+
+            reverse=True
+        )
+
+        empate_ordenado = sorted(
+
+            empate_count.items(),
+
+            key=lambda x: x[1],
+
+            reverse=True
+        )
+
+        fora_ordenado = sorted(
+
+            fora_count.items(),
+
+            key=lambda x: x[1],
+
+            reverse=True
+        )
+
+        # =========================
+        # TABELAS
+        # =========================
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+
+            st.markdown(
+                "## 🏠 Casa"
+            )
+
+            for placar, qtd in casa_ordenado:
+
+                pct = (
+
+                    qtd / total_casa * 100
+
+                ) if total_casa > 0 else 0
+
+                st.write(
+                    f"{placar} → "
+                    f"{qtd} "
+                    f"({pct:.2f}%)"
+                )
+
+        with c2:
+
+            st.markdown(
+                "## 🤝 Empate"
+            )
+
+            for placar, qtd in empate_ordenado:
+
+                pct = (
+
+                    qtd / total_empate * 100
+
+                ) if total_empate > 0 else 0
+
+                st.write(
+                    f"{placar} → "
+                    f"{qtd} "
+                    f"({pct:.2f}%)"
+                )
+
+        with c3:
+
+            st.markdown(
+                "## ✈️ Fora"
+            )
+
+            for placar, qtd in fora_ordenado:
+
+                pct = (
+
+                    qtd / total_fora * 100
+
+                ) if total_fora > 0 else 0
+
+                st.write(
+                    f"{placar} → "
+                    f"{qtd} "
+                    f"({pct:.2f}%)"
+                )
+
+    # =========================
+    # PREVISÃO MANUAL
+    # =========================
+
+    st.divider()
+
+    st.header("📊 Previsão Manual")
+
+    lista_casa = st.text_area(
+        "Lista CASA:",
+        height=150,
+        key="placar_lista_casa"
+    )
+
+    lista_fora = st.text_area(
+        "Lista FORA:",
+        height=150,
+        key="placar_lista_fora"
+    )
+
+    gerar = st.button(
+        "Gerar previsão",
+        key="placar_previsao"
+    )
+
+    if gerar:
+
+        def extrair_gols(lista):
+
+            gols = []
+
+            for linha in lista.splitlines():
+
+                p = normalizar_placar(linha)
+
+                if p:
+
+                    a, b = map(int, p.split(" x "))
+
+                    gols.append(a)
+
+            return gols
+
+        gols_casa = extrair_gols(lista_casa)
+        gols_fora = extrair_gols(lista_fora)
+
+        if not gols_casa or not gols_fora:
+
+            st.warning(
+                "Preencha as duas listas corretamente."
+            )
+
+        else:
+
+            freq_casa = Counter(gols_casa)
+            freq_fora = Counter(gols_fora)
+
+            total_casa = sum(freq_casa.values())
+            total_fora = sum(freq_fora.values())
+
+            prob_casa = {
+                g: freq_casa[g] / total_casa
+                for g in freq_casa
+            }
+
+            prob_fora = {
+                g: freq_fora[g] / total_fora
+                for g in freq_fora
+            }
+
+            resultados = []
+
+            for g1 in prob_casa:
+
+                for g2 in prob_fora:
+
+                    prob = prob_casa[g1] * prob_fora[g2]
+
+                    resultados.append(
+                        (f"{g1} x {g2}", prob)
+                    )
+
+            resultados = sorted(
+
+                resultados,
+
+                key=lambda x: x[1],
+
+                reverse=True
+            )
+
+            st.subheader(
+                "📊 Top placares previstos"
+            )
+
+            for placar, prob in resultados[:15]:
+
+                st.write(
+                    f"{placar} → {prob*100:.2f}%"
+                )
+
+            st.warning(
+                "⚠️ Esses placares não são garantias de lucro. A previsão representa apenas tendências estatísticas do confronto."
+            )
+
+with tab4:
+
+    st.subheader("🏆 Ligas")
+
+    df_ligas = df[
+        df['Placar'] != "🔮"
+    ].copy()
+
+    resumo = []
+
+    ligas = sorted(
+        df_ligas['Liga']
+        .dropna()
+        .unique()
+    )
+
+    for liga in ligas:
+
+        df_liga = df_ligas[
+            df_ligas['Liga'] == liga
+        ]
+
+        total = len(df_liga)
+
+        total_0x1 = len(
+
+            df_liga[
+                df_liga['Placar'] == "0 x 1"
+            ]
+        )
+
+        pct_0x1 = (
+
+            total_0x1 / total * 100
+
+        ) if total > 0 else 0
+
+        resumo.append({
+
+            "Liga": liga,
+
+            "Jogos": total,
+
+            "0x1": total_0x1,
+
+            "% 0x1": round(
+                pct_0x1,
+                2
+            )
+        })
+
+    df_resumo = pd.DataFrame(
+        resumo
+    )
+
+    df_resumo = df_resumo.sort_values(
+        by="% 0x1",
+        ascending=True
     )
 
     st.dataframe(
-        resumo,
-        use_container_width=True
+
+        df_resumo,
+
+        use_container_width=True,
+        hide_index=True
     )
 
-    liga_selecionada = st.selectbox(
+    st.divider()
+
+    liga_escolhida = st.selectbox(
+
         "Selecionar Liga",
-        options=resumo['Liga']
+
+        ligas,
+
+        key="liga_select"
     )
 
-    df_detalhe = df[
-        (df['Liga'] == liga_selecionada) &
-        (df['Placar'] != "🔮")
-    ].copy()
+    df_liga = df_ligas[
 
-    colunas_liga = [
-        'Data_str',
-        'Time Casa',
-        'Time Visitante',
-        'Placar',
-        'Resultado'
+        df_ligas['Liga'] == liga_escolhida
     ]
 
     st.subheader(
-        f"📊 Todos os jogos da liga: {liga_selecionada}"
+        f"📊 Jogos da Liga: {liga_escolhida}"
     )
 
     st.dataframe(
-        df_detalhe[colunas_liga].sort_values(
-            by='Data_str',
-            ascending=False
-        ),
-        use_container_width=True
+
+        df_liga[[
+
+            'Data_str',
+            'Hora',
+            'Time Casa',
+            'Time Visitante',
+            'Placar',
+            'Probabilidade (%)'
+        ]],
+
+        use_container_width=True,
+        hide_index=True
     )
 
     # =========================
-    # PROCESSAR PLACARES DA LIGA
+    # PROCESSAR PLACARES
     # =========================
 
-    if st.button("⚽ Processar Placares da Liga"):
+    if st.button(
 
-        placares_processados = df_detalhe[
-            'Placar'
-        ].dropna().tolist()
+        "⚽ Processar Placares da Liga",
 
-        st.session_state.placares_processados = (
-            placares_processados
-        )
+        key="liga_processar"
+    ):
+
+        placares_processados = [
+
+            normalizar_placar(p)
+
+            for p in df_liga['Placar']
+            .dropna()
+            .tolist()
+
+            if normalizar_placar(p)
+        ]
+
+        st.session_state[
+            "placares_processados"
+        ] = placares_processados
 
         st.success(
-            "Placares da liga processados. Vá para a aba Placares."
+            "Placares processados"
         )
 
     # =========================
-    # JOGOS 0X1
+    # ESTATÍSTICAS DOS TIMES
     # =========================
-
-    df_0x1 = df_detalhe[
-        df_detalhe['Placar'] == "0 x 1"
-    ]
-
-    st.subheader("❌ Jogos que terminaram 0 x 1")
-
-    if len(df_0x1) > 0:
-
-        st.dataframe(
-            df_0x1[colunas_liga].sort_values(
-                by='Data_str',
-                ascending=False
-            ),
-            use_container_width=True
-        )
-
-    else:
-        st.info("Nenhum jogo 0x1 nessa liga 👍")
-
-# =========================
-# ESTATÍSTICAS DOS TIMES
-# =========================
-
-    # =========================
-# ESTATÍSTICAS DOS TIMES
-# =========================
 
     vitorias_casa = {}
     derrotas_casa = {}
@@ -558,19 +1477,26 @@ with tab2:
     empates_casa = {}
     empates_fora = {}
 
-    for _, row in df_detalhe.iterrows():
+    for _, row in df_liga.iterrows():
 
         try:
 
             casa = row['Time Casa']
+
             fora = row['Time Visitante']
 
             gols_casa = int(
-                row['Placar'].split('x')[0].strip()
+
+                row['Placar']
+                .split('x')[0]
+                .strip()
             )
 
             gols_fora = int(
-                row['Placar'].split('x')[1].strip()
+
+                row['Placar']
+                .split('x')[1]
+                .strip()
             )
 
             # VITÓRIA CASA
@@ -578,10 +1504,12 @@ with tab2:
             if gols_casa > gols_fora:
 
                 vitorias_casa[casa] = (
+
                     vitorias_casa.get(casa, 0) + 1
                 )
 
                 derrotas_fora[fora] = (
+
                     derrotas_fora.get(fora, 0) + 1
                 )
 
@@ -590,10 +1518,12 @@ with tab2:
             elif gols_casa < gols_fora:
 
                 vitorias_fora[fora] = (
+
                     vitorias_fora.get(fora, 0) + 1
                 )
 
                 derrotas_casa[casa] = (
+
                     derrotas_casa.get(casa, 0) + 1
                 )
 
@@ -602,10 +1532,12 @@ with tab2:
             else:
 
                 empates_casa[casa] = (
+
                     empates_casa.get(casa, 0) + 1
                 )
 
                 empates_fora[fora] = (
+
                     empates_fora.get(fora, 0) + 1
                 )
 
@@ -613,40 +1545,60 @@ with tab2:
             pass
 
     top_vitorias_casa = sorted(
+
         vitorias_casa.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
 
     top_derrotas_casa = sorted(
+
         derrotas_casa.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
 
     top_empates_casa = sorted(
+
         empates_casa.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
 
     top_vitorias_fora = sorted(
+
         vitorias_fora.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
 
     top_derrotas_fora = sorted(
+
         derrotas_fora.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
 
     top_empates_fora = sorted(
+
         empates_fora.items(),
+
         key=lambda x: x[1],
+
         reverse=True
     )
+
+    st.divider()
 
     st.subheader("📈 Estatísticas dos Times")
 
@@ -696,262 +1648,5 @@ with tab2:
 
             st.write(f"{time} → {qtd}")
 
-# =========================
-# ABA 3 - PLACARES
-# =========================
-
-with tab3:
-
-    st.subheader("⚽ Análise de Placares")
-
-    def normalizar(linha):
-
-            linha = str(linha).strip().lower()
-
-            if not linha:
-                return None
-
-            m = re.match(r"^\s*(\d+)\D+(\d+)\s*$", linha)
-
-            if not m:
-                return None
-
-            a, b = m.groups()
-
-            return f"{int(a)} x {int(b)}"
-
-    def classificar(placar):
-
-            a, b = map(int, placar.split(" x "))
-
-            if a > b:
-                return "casa"
-
-            elif a == b:
-                return "empate"
-
-            else:
-                return "fora"
-
-    if "placares_processados" not in st.session_state:
-
-        st.info("Processe os placares na aba principal")
-
-    else:
-
-        placares = st.session_state.placares_processados
 
         
-
-        placares_validos = []
-        invalidos = 0
-
-        for l in placares:
-
-            p = normalizar(l)
-
-            if p:
-                placares_validos.append(p)
-
-            else:
-                invalidos += 1
-
-        if not placares_validos:
-
-            st.warning("Nenhum placar válido encontrado.")
-
-        else:
-
-            freq = Counter(placares_validos)
-
-            total = sum(freq.values())
-
-            casa = []
-            empate = []
-            fora = []
-
-            for placar, qtd in freq.items():
-
-                perc = (qtd / total) * 100
-
-                tipo = classificar(placar)
-
-                item = (placar, qtd, perc)
-
-                if tipo == "casa":
-                    casa.append(item)
-
-                elif tipo == "empate":
-                    empate.append(item)
-
-                else:
-                    fora.append(item)
-
-            total_casa = sum(q for _, q, _ in casa)
-            total_empate = sum(q for _, q, _ in empate)
-            total_fora = sum(q for _, q, _ in fora)
-
-            casa = sorted(casa, key=lambda x: x[1], reverse=True)
-            empate = sorted(empate, key=lambda x: x[1], reverse=True)
-            fora = sorted(fora, key=lambda x: x[1], reverse=True)
-
-            st.subheader("📌 Resumo geral")
-
-            col_r1, col_r2, col_r3 = st.columns(3)
-
-            with col_r1:
-                st.metric(
-                    "🏠 Casa",
-                    f"{total_casa}",
-                    f"{(total_casa/total)*100:.2f}%"
-                )
-
-            with col_r2:
-                st.metric(
-                    "🤝 Empate",
-                    f"{total_empate}",
-                    f"{(total_empate/total)*100:.2f}%"
-                )
-
-            with col_r3:
-                st.metric(
-                    "🚗 Fora",
-                    f"{total_fora}",
-                    f"{(total_fora/total)*100:.2f}%"
-                )
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-
-                st.subheader("🏠 Casa")
-
-                for p, q, pc in casa:
-                    st.write(f"{p} → {q} ({pc:.2f}%)")
-
-            with col2:
-
-                st.subheader("🤝 Empate")
-
-                for p, q, pc in empate:
-                    st.write(f"{p} → {q} ({pc:.2f}%)")
-
-            with col3:
-
-                st.subheader("🚗 Fora")
-
-                for p, q, pc in fora:
-                    st.write(f"{p} → {q} ({pc:.2f}%)")
-
-            st.success(
-                f"Total válido: {total} | Inválidos: {invalidos}"
-            )
-
-    # =========================
-    # PREVISÃO MANUAL
-    # =========================
-
-    st.divider()
-
-    st.header("2) Previsão (Casa x Fora)")
-
-    if "lista_casa" not in st.session_state:
-        st.session_state.lista_casa = ""
-
-    if "lista_fora" not in st.session_state:
-        st.session_state.lista_fora = ""
-
-    col_btn3, col_btn4 = st.columns(2)
-
-    with col_btn3:
-        gerar = st.button("Gerar previsão")
-
-    with col_btn4:
-
-        if st.button("Limpar previsão"):
-
-            st.session_state.lista_casa = ""
-            st.session_state.lista_fora = ""
-
-            st.rerun()
-
-    lista_casa = st.text_area(
-        "Lista CASA:",
-        height=150,
-        key="lista_casa"
-    )
-
-    lista_fora = st.text_area(
-        "Lista FORA:",
-        height=150,
-        key="lista_fora"
-    )
-
-    if gerar:
-
-        def extrair_gols(lista):
-
-            gols = []
-
-            for linha in lista.splitlines():
-
-                p = normalizar(linha)
-
-                if p:
-
-                    a, b = map(int, p.split(" x "))
-
-                    gols.append(a)
-
-            return gols
-
-        gols_casa = extrair_gols(lista_casa)
-        gols_fora = extrair_gols(lista_fora)
-
-        if not gols_casa or not gols_fora:
-
-            st.warning("Preencha as duas listas corretamente.")
-
-        else:
-
-            freq_casa = Counter(gols_casa)
-            freq_fora = Counter(gols_fora)
-
-            total_casa = sum(freq_casa.values())
-            total_fora = sum(freq_fora.values())
-
-            prob_casa = {
-                g: freq_casa[g] / total_casa
-                for g in freq_casa
-            }
-
-            prob_fora = {
-                g: freq_fora[g] / total_fora
-                for g in freq_fora
-            }
-
-            resultados = []
-
-            for g1 in prob_casa:
-
-                for g2 in prob_fora:
-
-                    prob = prob_casa[g1] * prob_fora[g2]
-
-                    resultados.append(
-                        (f"{g1} x {g2}", prob)
-                    )
-
-            resultados = sorted(
-                resultados,
-                key=lambda x: x[1],
-                reverse=True
-            )
-
-            st.subheader("📊 Top placares previstos")
-
-            for placar, prob in resultados[:15]:
-
-                st.write(
-                    f"{placar} → {prob*100:.2f}%"
-                )
