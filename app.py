@@ -966,23 +966,10 @@ with tab2:
         )
 
     # =========================
-    # TABELA
-    # =========================
-
-    # =========================
     # RESULTADO VISUAL
     # =========================
 
-    df_manual['Green/Red'] = df_manual['Placar'].apply(
-
-        lambda x:
-
-        "🟢 V"
-
-        if x != "0 x 1"
-
-        else "🔴 X"
-    )
+    df_manual['Green/Red'] = df_manual['Resultado']
 
     # =========================
     # TABELA
