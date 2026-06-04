@@ -285,6 +285,22 @@ df['Resultado'] = (
 )
 
 # =========================
+# TEMPORADA ATUAL
+# =========================
+
+hoje = datetime.today()
+
+ano = hoje.year
+
+if hoje.month >= 7:
+
+    temporada_atual = f"{ano}/{ano+1}"
+
+else:
+
+    temporada_atual = f"{ano-1}/{ano}"
+
+# =========================
 # TEMPORADAS
 # =========================
 
@@ -297,11 +313,13 @@ temporadas = sorted(
     reverse=True
 )
 
+
+
 temporada_escolhida = st.sidebar.selectbox(
 
     "📅 Temporada",
 
-    ["Todas"] + list(temporadas)
+    list(temporadas) + ["Todas"]
 )
 
 # =========================
@@ -322,6 +340,30 @@ if temporada_escolhida != "Todas":
 st.sidebar.write(
     f"Jogos: {len(df_base)}"
 )
+
+# =========================
+# SINCRONIZAR DATAS
+# =========================
+
+if (
+    "ultima_temporada" not in st.session_state
+    or
+    st.session_state.ultima_temporada
+    != temporada_escolhida
+):
+
+    st.session_state.manual_data_inicio = (
+        df_base['Data'].min().date()
+    )
+
+    st.session_state.manual_data_final = (
+        df_base['Data'].max().date()
+    )
+
+    st.session_state.ultima_temporada = (
+        temporada_escolhida
+    )
+
 
 # =========================
 # ABAS
@@ -845,11 +887,11 @@ with tab2:
         st.session_state.manual_fora = ""
 
         st.session_state.manual_data_inicio = (
-            df['Data'].min().date()
+            df_base['Data'].min().date()
         )
 
         st.session_state.manual_data_final = (
-            df['Data'].max().date()
+            df_base['Data'].max().date()
         )
 
     # =========================
@@ -882,7 +924,7 @@ with tab2:
 
         data_inicio = st.date_input(
             "📅 Data Inicial",
-            value=df['Data'].min().date(),
+            value=df_base['Data'].min().date(),
             format="DD/MM/YYYY",
             key="manual_data_inicio"
         )
@@ -891,7 +933,7 @@ with tab2:
 
         data_final = st.date_input(
             "📅 Data Final",
-            value=df['Data'].max().date(),
+            value=df_base['Data'].max().date(),
             format="DD/MM/YYYY",
             key="manual_data_final"
         )
@@ -924,7 +966,11 @@ with tab2:
     # HOJE
     # =========================
 
-    hoje = datetime.today().date()
+    hoje = datetime(
+    2026,
+    8,
+    15
+    )
 
     # =========================
     # BOTÕES
@@ -970,7 +1016,7 @@ with tab2:
     # BASE
     # =========================
 
-    df_manual = df.copy()
+    df_manual = df_base.copy()
 
     # RANGE
 
