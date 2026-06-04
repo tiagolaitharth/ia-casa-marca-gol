@@ -6,7 +6,17 @@ import re
 
 from datetime import datetime
 from collections import Counter
-usuarios = st.secrets["usuarios"]
+# usuarios = st.secrets["usuarios"]
+usuarios = {
+
+    "tiago": {
+
+        "senha": "123",
+
+        "expira": "2099-12-31"
+    }
+
+}
 
 # =========================
 # CONFIG
@@ -126,13 +136,40 @@ df = pd.read_excel(
 # DATA
 # =========================
 
-df['Data'] = pd.to_datetime(
+def definir_temporada(data):
 
-    df['Data'],
+    if pd.isna(data):
+        return ""
 
-    dayfirst=True,
+    ano = data.year
 
-    errors='coerce'
+    if data.month >= 7:
+        return f"{ano}/{ano+1}"
+
+    return f"{ano-1}/{ano}"
+
+df["Temporada"] = df["Data"].apply(
+    definir_temporada
+)
+
+# =========================
+# TEMPORADA
+# =========================
+
+def definir_temporada(data):
+
+    if pd.isna(data):
+        return ""
+
+    ano = data.year
+
+    if data.month >= 7:
+        return f"{ano}/{ano+1}"
+
+    return f"{ano-1}/{ano}"
+
+df["Temporada"] = df["Data"].apply(
+    definir_temporada
 )
 
 df['Data_str'] = (
@@ -245,6 +282,45 @@ df['Resultado'] = (
 
     df['Placar']
     .apply(resultado_flag)
+)
+
+# =========================
+# TEMPORADAS
+# =========================
+
+temporadas = sorted(
+
+    df["Temporada"]
+    .dropna()
+    .unique(),
+
+    reverse=True
+)
+
+temporada_escolhida = st.sidebar.selectbox(
+
+    "📅 Temporada",
+
+    ["Todas"] + list(temporadas)
+)
+
+# =========================
+# FILTRO TEMPORADA
+# =========================
+
+df_base = df.copy()
+
+if temporada_escolhida != "Todas":
+
+    df_base = df_base[
+
+        df_base["Temporada"]
+
+        == temporada_escolhida
+    ]
+
+st.sidebar.write(
+    f"Jogos: {len(df_base)}"
 )
 
 # =========================
@@ -446,62 +522,56 @@ with tab1:
             status_1x0 = "🔥 ELITE 1x0"
 
         # =========================
-        # FAIXA 93-100
+        # TOP / BOM / MÉDIO 0x1
         # =========================
 
-        if prob >= 93:
+        if not status_0x1:
 
-            if not status_0x1:
+            # TOP
+            if prob >= 90 and prob <= 92:
 
                 if lay_0x1 >= 96:
 
                     status_0x1 = "🚀 TOP 0x1"
 
-                elif lay_0x1 >= 91:
+            # BOM
+            elif prob >= 85 and prob < 90:
+
+                if lay_0x1 >= 94:
 
                     status_0x1 = "✅ BOM 0x1"
 
-            if not status_1x0:
+            # MÉDIO
+            elif prob >= 80 and prob < 85:
+
+                if lay_0x1 >= 90:
+
+                    status_0x1 = "⚠️ MÉDIO 0x1"
+
+        # =========================
+        # TOP / BOM / MÉDIO 1x0
+        # =========================
+
+        if not status_1x0:
+
+            # TOP
+            if prob >= 1 and prob <= 50:
 
                 if lay_1x0 >= 96:
 
                     status_1x0 = "🚀 TOP 1x0"
 
-                elif lay_1x0 >= 91:
+            # BOM
+            elif prob > 50 and prob <= 70:
+
+                if lay_1x0 >= 94:
 
                     status_1x0 = "✅ BOM 1x0"
 
-        # =========================
-        # FAIXA 90-92.99
-        # =========================
+            # MÉDIO
+            elif prob > 70 and prob <= 85:
 
-        elif prob >= 90:
-
-            if not status_0x1:
-
-                if lay_0x1 >= 98:
-
-                    status_0x1 = "🚀 TOP 0x1"
-
-                elif lay_0x1 >= 95:
-
-                    status_0x1 = "✅ BOM 0x1"
-
-                elif lay_0x1 >= 91:
-
-                    status_0x1 = "⚠️ MÉDIO 0x1"
-
-            if not status_1x0:
-
-                if lay_1x0 >= 98:
-
-                    status_1x0 = "🚀 TOP 1x0"
-
-                elif lay_1x0 >= 95:
-
-                    status_1x0 = "✅ BOM 1x0"
-
-                elif lay_1x0 >= 91:
+                if lay_1x0 >= 90:
 
                     status_1x0 = "⚠️ MÉDIO 1x0"
 
@@ -586,8 +656,12 @@ with tab1:
                     st.rerun()
 
                 st.write(
-                    f"📚 {total_jogos} jogos analisados"
+                    f"📚 {total_jogos_0x1} jogos analisados 0x1"
                 )
+
+                st.write(
+                    f"📚 {total_jogos_1x0} jogos analisados 1x0"
+)
 
                 st.write(
                     f"0x1 → {total_0x1} vezes ({pct_0x1:.2f}%)"
