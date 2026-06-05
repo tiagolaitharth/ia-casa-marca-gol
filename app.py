@@ -7,6 +7,16 @@ import re
 from datetime import datetime
 from collections import Counter
 usuarios = st.secrets["usuarios"]
+# usuarios = {
+
+#     "tiago": {
+
+#         "senha": "123",
+
+#         "expira": "2099-12-31"
+#     }
+
+# }
 
 # =========================
 # CONFIG
@@ -121,18 +131,38 @@ df = pd.read_excel(
     "resultado_modelo.xlsx"
 )
 
-
 # =========================
 # DATA
 # =========================
 
-df['Data'] = pd.to_datetime(
+df["Data"] = pd.to_datetime(
 
-    df['Data'],
+    df["Data"],
 
     dayfirst=True,
 
-    errors='coerce'
+    errors="coerce"
+)
+
+
+# =========================
+# TEMPORADA
+# =========================
+
+def definir_temporada(data):
+
+    if pd.isna(data):
+        return ""
+
+    ano = data.year
+
+    if data.month >= 7:
+        return f"{ano}/{ano+1}"
+
+    return f"{ano-1}/{ano}"
+
+df["Temporada"] = df["Data"].apply(
+    definir_temporada
 )
 
 df['Data_str'] = (
@@ -246,6 +276,71 @@ df['Resultado'] = (
     df['Placar']
     .apply(resultado_flag)
 )
+
+# =========================
+# TEMPORADAS
+# =========================
+
+temporadas = sorted(
+
+    df["Temporada"]
+    .dropna()
+    .unique(),
+
+    reverse=True
+)
+
+
+
+temporada_escolhida = st.sidebar.selectbox(
+
+    "📅 Temporada",
+
+    list(temporadas) + ["Todas"]
+)
+
+# =========================
+# FILTRO TEMPORADA
+# =========================
+
+df_base = df.copy()
+
+if temporada_escolhida != "Todas":
+
+    df_base = df_base[
+
+        df_base["Temporada"]
+
+        == temporada_escolhida
+    ]
+
+st.sidebar.write(
+    f"Jogos: {len(df_base)}"
+)
+
+# =========================
+# SINCRONIZAR DATAS
+# =========================
+
+if (
+    "ultima_temporada" not in st.session_state
+    or
+    st.session_state.ultima_temporada
+    != temporada_escolhida
+):
+
+    st.session_state.manual_data_inicio = (
+        df_base['Data'].min().date()
+    )
+
+    st.session_state.manual_data_final = (
+        df_base['Data'].max().date()
+    )
+
+    st.session_state.ultima_temporada = (
+        temporada_escolhida
+    )
+
 
 # =========================
 # ABAS
@@ -769,11 +864,11 @@ with tab2:
         st.session_state.manual_fora = ""
 
         st.session_state.manual_data_inicio = (
-            df['Data'].min().date()
+            df_base['Data'].min().date()
         )
 
         st.session_state.manual_data_final = (
-            df['Data'].max().date()
+            df_base['Data'].max().date()
         )
 
     # =========================
@@ -806,7 +901,7 @@ with tab2:
 
         data_inicio = st.date_input(
             "📅 Data Inicial",
-            value=df['Data'].min().date(),
+            value=df_base['Data'].min().date(),
             format="DD/MM/YYYY",
             key="manual_data_inicio"
         )
@@ -815,7 +910,7 @@ with tab2:
 
         data_final = st.date_input(
             "📅 Data Final",
-            value=df['Data'].max().date(),
+            value=df_base['Data'].max().date(),
             format="DD/MM/YYYY",
             key="manual_data_final"
         )
@@ -847,7 +942,6 @@ with tab2:
     # =========================
     # HOJE
     # =========================
-
     hoje = datetime.today().date()
 
     # =========================
@@ -894,7 +988,7 @@ with tab2:
     # BASE
     # =========================
 
-    df_manual = df.copy()
+    df_manual = df_base.copy()
 
     # RANGE
 
@@ -1440,8 +1534,8 @@ with tab4:
 
     st.subheader("🏆 Ligas")
 
-    df_ligas = df[
-        df['Placar'] != "🔮"
+    df_ligas = df_base[
+        df_base['Placar'] != "🔮"
     ].copy()
 
     resumo = []

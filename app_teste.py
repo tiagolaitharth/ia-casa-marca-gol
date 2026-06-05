@@ -285,22 +285,6 @@ df['Resultado'] = (
 )
 
 # =========================
-# TEMPORADA ATUAL
-# =========================
-
-hoje = datetime.today()
-
-ano = hoje.year
-
-if hoje.month >= 7:
-
-    temporada_atual = f"{ano}/{ano+1}"
-
-else:
-
-    temporada_atual = f"{ano-1}/{ano}"
-
-# =========================
 # TEMPORADAS
 # =========================
 
