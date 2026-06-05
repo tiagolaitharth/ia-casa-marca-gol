@@ -1546,99 +1546,115 @@ with tab4:
         .unique()
     )
 
-    for liga in ligas:
+    df_liga = pd.DataFrame(
+        columns=df_ligas.columns
+    )
 
-        df_liga = df_ligas[
-            df_ligas['Liga'] == liga
-        ]
+    # =========================
+    # SEM LIGAS
+    # =========================
 
-        total = len(df_liga)
+    if len(ligas) == 0:
 
-        total_0x1 = len(
+        st.info(
+            "Nenhuma liga com jogos finalizados nesta temporada."
+        )
+    
+    else:
 
-            df_liga[
-                df_liga['Placar'] == "0 x 1"
+        for liga in ligas:
+
+            df_liga = df_ligas[
+                df_ligas['Liga'] == liga
             ]
+
+            total = len(df_liga)
+
+            total_0x1 = len(
+
+                df_liga[
+                    df_liga['Placar'] == "0 x 1"
+                ]
+            )
+
+            pct_0x1 = (
+
+                total_0x1 / total * 100
+
+            ) if total > 0 else 0
+
+            resumo.append({
+
+                "Liga": liga,
+
+                "Jogos": total,
+
+                "0x1": total_0x1,
+
+                "% 0x1": round(
+                    pct_0x1,
+                    2
+                )
+            })
+
+        df_resumo = pd.DataFrame(
+            resumo
         )
 
-        pct_0x1 = (
+        df_resumo = df_resumo.sort_values(
+            by="% 0x1",
+            ascending=True
+        )
 
-            total_0x1 / total * 100
+        st.dataframe(
 
-        ) if total > 0 else 0
+            df_resumo,
 
-        resumo.append({
+            use_container_width=True,
+            hide_index=True
+        )
 
-            "Liga": liga,
+        st.divider()
 
-            "Jogos": total,
+        liga_escolhida = st.selectbox(
 
-            "0x1": total_0x1,
+            "Selecionar Liga",
 
-            "% 0x1": round(
-                pct_0x1,
-                2
-            )
-        })
+            ligas,
 
-    df_resumo = pd.DataFrame(
-        resumo
-    )
+            key="liga_select"
+        )
 
-    df_resumo = df_resumo.sort_values(
-        by="% 0x1",
-        ascending=True
-    )
+        df_liga = df_ligas[
 
-    st.dataframe(
+            df_ligas['Liga'] == liga_escolhida
+        ]
 
-        df_resumo,
+        st.subheader(
+            f"📊 Jogos da Liga: {liga_escolhida}"
+        )
 
-        use_container_width=True,
-        hide_index=True
-    )
+        st.dataframe(
 
-    st.divider()
+            df_liga[[
 
-    liga_escolhida = st.selectbox(
+                'Data_str',
+                'Hora',
+                'Time Casa',
+                'Time Visitante',
+                'Placar',
+                'Probabilidade (%)'
+            ]],
 
-        "Selecionar Liga",
-
-        ligas,
-
-        key="liga_select"
-    )
-
-    df_liga = df_ligas[
-
-        df_ligas['Liga'] == liga_escolhida
-    ]
-
-    st.subheader(
-        f"📊 Jogos da Liga: {liga_escolhida}"
-    )
-
-    st.dataframe(
-
-        df_liga[[
-
-            'Data_str',
-            'Hora',
-            'Time Casa',
-            'Time Visitante',
-            'Placar',
-            'Probabilidade (%)'
-        ]],
-
-        use_container_width=True,
-        hide_index=True
-    )
+            use_container_width=True,
+            hide_index=True
+        )
 
     # =========================
     # PROCESSAR PLACARES
     # =========================
 
-    if st.button(
+    if ligas and st.button(
 
         "⚽ Processar Placares da Liga",
 
